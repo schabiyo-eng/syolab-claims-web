@@ -1,0 +1,10 @@
+---
+description: Claims intake web guardrails and definition of done
+alwaysApply: true
+---
+
+Generated types from `openapi/claims-api.yaml` are the only API schema. Do not hand-write a duplicate. `npm run check:api` fails if `src/api/schema.d.ts` drifts.
+
+Definition of done is the stop hook suite: `npm test`, `npm run build`, and `npm run e2e`. Do not weaken an existing test to make that suite pass.
+
+Customer-safe copy only. Fictional Syolab policyholders. No other vendors.
