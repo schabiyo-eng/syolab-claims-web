@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+playwright-report
+test-results
+src/api/schema.d.ts
+openapi/claims-api.yaml
+DEMO.md
+package-lock.json
