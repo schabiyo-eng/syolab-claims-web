@@ -1,4 +1,10 @@
-import type { Policy } from "../src/api/types";
+import type { Comment, Policy } from "../src/api/types";
+import type { DecisionInput } from "./decision";
+
+export interface SeedDecision extends DecisionInput {
+  actor: string;
+  at: string;
+}
 
 export interface SeedClaim {
   id: string;
@@ -9,7 +15,12 @@ export interface SeedClaim {
   description: string;
   documentNames: string[];
   createdAt: string;
+  decisions?: readonly SeedDecision[];
+  comments?: readonly Comment[];
 }
+
+const ADJUSTER_NAME = "Dana Wells";
+const MEDICAL_BILL_REQUEST = "Please upload the medical bill for the clinic visit.";
 
 export function seedPolicies(): Policy[] {
   return [
@@ -63,6 +74,14 @@ export function seedClaims(): SeedClaim[] {
       description: "Parking lot dent",
       documentNames: ["police-report"],
       createdAt: "2026-01-20T15:00:00Z",
+      decisions: [
+        {
+          decision: "APPROVED",
+          note: null,
+          actor: ADJUSTER_NAME,
+          at: "2026-01-22T11:00:00Z",
+        },
+      ],
     },
     {
       id: "c1111111-1111-4111-8111-111111111111",
@@ -93,6 +112,23 @@ export function seedClaims(): SeedClaim[] {
       description: "Clinic visit",
       documentNames: [],
       createdAt: "2026-04-02T15:00:00Z",
+      decisions: [
+        {
+          decision: "INFO_REQUESTED",
+          note: MEDICAL_BILL_REQUEST,
+          actor: ADJUSTER_NAME,
+          at: "2026-04-04T09:30:00Z",
+        },
+      ],
+      comments: [
+        {
+          id: "d3333333-3333-4333-8333-333333333333",
+          at: "2026-04-04T09:31:00Z",
+          author: ADJUSTER_NAME,
+          role: "ADJUSTER",
+          body: MEDICAL_BILL_REQUEST,
+        },
+      ],
     },
     {
       id: "c4444444-4444-4444-8444-444444444444",
@@ -103,6 +139,14 @@ export function seedClaims(): SeedClaim[] {
       description: "Windshield chip",
       documentNames: ["police-report"],
       createdAt: "2026-05-01T15:00:00Z",
+      decisions: [
+        {
+          decision: "DENIED",
+          note: "The policy expired before the incident date.",
+          actor: ADJUSTER_NAME,
+          at: "2026-05-03T10:00:00Z",
+        },
+      ],
     },
   ];
 }

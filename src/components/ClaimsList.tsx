@@ -1,5 +1,7 @@
 import type { Claim } from "../api/types";
 import { statusLabel } from "../domain/status";
+import { DecisionBadge } from "./DecisionBadge";
+import { RouteLink } from "./RouteLink";
 
 interface ClaimsListProps {
   claims: Claim[];
@@ -18,10 +20,20 @@ export function ClaimsList({ claims }: ClaimsListProps) {
           <li key={claim.id}>
             <article className="claim">
               <div className="claim-top">
-                <h3>{claim.claimantName}</h3>
-                <p className={`status status-${claim.status.toLowerCase()}`}>
-                  {statusLabel(claim.status)}
-                </p>
+                <h3>
+                  <RouteLink
+                    route={{ kind: "claim", id: claim.id }}
+                    className="claim-link"
+                  >
+                    {claim.claimantName}
+                  </RouteLink>
+                </h3>
+                <div className="badges">
+                  <p className={`status status-${claim.status.toLowerCase()}`}>
+                    {statusLabel(claim.status)}
+                  </p>
+                  <DecisionBadge decision={claim.decision} />
+                </div>
               </div>
               <p className="meta">
                 {claim.policyNumber} · {claim.amount} · {claim.incidentDate}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newestFirst } from "./claims";
+import { newestFirst, shortId } from "./claims";
 
 describe("newestFirst", () => {
   it("orders claims by createdAt descending", () => {
@@ -9,5 +9,12 @@ describe("newestFirst", () => {
       { id: "middle", createdAt: "2026-03-12T15:00:00Z" },
     ]);
     expect(ordered.map((claim) => claim.id)).toEqual(["newer", "middle", "older"]);
+  });
+});
+
+describe("shortId", () => {
+  it("keeps the first block of a claim id", () => {
+    expect(shortId("c3333333-3333-4333-8333-333333333333")).toBe("c3333333");
+    expect(shortId("abc")).toBe("abc");
   });
 });

@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { canSee } from "./access";
 import { createAuth } from "./auth";
 import { systemClock } from "./clock";
-import { parseCreateClaim } from "./request";
+import { parseCommentRequest, parseCreateClaim, parseDecisionRequest } from "./request";
 import { createStore } from "./store";
 
 const HOST = "127.0.0.1";
@@ -45,6 +45,16 @@ function readBody(request: IncomingMessage): Promise<string> {
     request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     request.on("error", reject);
   });
+}
+
+async function readJson(
+  request: IncomingMessage,
+): Promise<{ ok: true; value: unknown } | { ok: false; message: string }> {
+  try {
+    return { ok: true, value: JSON.parse(await readBody(request)) as unknown };
+  } catch {
+    return { ok: false, message: "Request body must be JSON." };
+  }
 }
 
 const server = createServer(async (request, response) => {
@@ -143,7 +153,11 @@ const server = createServer(async (request, response) => {
         sendJson(response, 404, { message: "Policy not found" });
         return;
       }
-      sendJson(response, 201, store.createClaim(claim.claim));
+      sendJson(
+        response,
+        201,
+        store.createClaim(claim.claim, principal.user.displayName),
+      );
       return;
     }
     const claimMatch = /^\/api\/claims\/([^/]+)$/.exec(path);
@@ -154,6 +168,79 @@ const server = createServer(async (request, response) => {
         return;
       }
       sendJson(response, 200, claim);
+      return;
+    }
+    const decisionMatch = /^\/api\/claims\/([^/]+)\/decision$/.exec(path);
+    if (method === "POST" && decisionMatch?.[1]) {
+      if (principal.user.role !== "ADJUSTER") {
+        sendJson(response, 403, { message: "Only adjusters can decide claims." });
+        return;
+      }
+      const id = decodeURIComponent(decisionMatch[1]);
+      if (!store.getClaim(id)) {
+        sendJson(response, 404, { message: "Claim not found" });
+        return;
+      }
+      const body = await readJson(request);
+      if (!body.ok) {
+        sendJson(response, 400, { message: body.message });
+        return;
+      }
+      const decision = parseDecisionRequest(body.value);
+      if (!decision.ok) {
+        sendJson(response, 400, { message: decision.message });
+        return;
+      }
+      const result = store.decideClaim(
+        id,
+        decision.request,
+        principal.user.displayName,
+      );
+      if (!result) {
+        sendJson(response, 404, { message: "Claim not found" });
+        return;
+      }
+      if (!result.ok) {
+        sendJson(response, 409, {
+          message: "This claim already has a final decision.",
+        });
+        return;
+      }
+      sendJson(response, 200, result.claim);
+      return;
+    }
+    const commentsMatch = /^\/api\/claims\/([^/]+)\/comments$/.exec(path);
+    if ((method === "GET" || method === "POST") && commentsMatch?.[1]) {
+      const id = decodeURIComponent(commentsMatch[1]);
+      const claim = store.getClaim(id);
+      if (!claim || !canSee(scope, claim.policyNumber)) {
+        sendJson(response, 404, { message: "Claim not found" });
+        return;
+      }
+      if (method === "GET") {
+        sendJson(response, 200, store.listComments(id));
+        return;
+      }
+      const body = await readJson(request);
+      if (!body.ok) {
+        sendJson(response, 400, { message: body.message });
+        return;
+      }
+      const comment = parseCommentRequest(body.value);
+      if (!comment.ok) {
+        sendJson(response, 400, { message: comment.message });
+        return;
+      }
+      const stored = store.addComment(id, {
+        author: principal.user.displayName,
+        role: principal.user.role,
+        body: comment.body,
+      });
+      if (!stored) {
+        sendJson(response, 404, { message: "Claim not found" });
+        return;
+      }
+      sendJson(response, 201, stored);
       return;
     }
     sendJson(response, 404, { message: "Not found" });

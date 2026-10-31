@@ -46,6 +46,8 @@ Sign in with one of the stub's demo logins:
 
 Claimants see My claims and file claims only on their own policies. Adjusters see the claims queue for every policy, with a status filter and a search by claimant or policy. The API scopes every list and lookup to the caller: a policy or claim outside a claimant's scope returns 404, the same as one that does not exist.
 
+Click a claimant name in My claims or the claims queue to open the claim detail page at `/claims/<id>`. It shows the claim fields, the validation status and findings, the adjuster decision, a timeline, and comments. Adjusters can Approve, Deny, or Request info. Deny and Request info need a note. Approved and Denied are final; Info requested is not, so the adjuster can decide again after the claimant replies in the comments. Every list row shows the decision next to the validation status. The stub seeds three decisions to show: Luis Ortega's clinic visit has an info request for the medical bill, Nora Blake's windshield claim is denied because the policy expired, and Chris Dalton's parking lot dent is approved.
+
 `POST /api/auth/login` returns a token. Every other `/api` call needs it in an `Authorization: Bearer <token>` header and gets a 401 without it. The app keeps the token in session storage, so it lasts until the tab closes or you log out. The stub keeps tokens in memory, so restarting it signs everyone out.
 
 ## Unit tests

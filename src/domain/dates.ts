@@ -18,3 +18,8 @@ export function isIsoDate(value: string): boolean {
     parsed.getUTCDate() === day
   );
 }
+
+export function formatDateTime(iso: string): string {
+  const parsed = new Date(iso);
+  return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleString();
+}
