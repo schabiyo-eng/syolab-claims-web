@@ -12,9 +12,7 @@ import {
 } from "../domain/validation";
 import { ClaimForm } from "./ClaimForm";
 import { ClaimsList } from "./ClaimsList";
-
-type LoadState<T> =
-  { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: T };
+import { messageOf, type LoadState } from "./loadState";
 
 const EMPTY_FORM: ClaimFormValues = {
   policyNumber: "",
@@ -24,14 +22,7 @@ const EMPTY_FORM: ClaimFormValues = {
   description: "",
 };
 
-function messageOf(error: unknown): string {
-  if (error instanceof Error && error.message.trim() !== "") {
-    return error.message;
-  }
-  return "Something went wrong.";
-}
-
-export function ClaimsDesk() {
+export function ClaimantDesk() {
   const [policies, setPolicies] = useState<LoadState<Policy[]>>({ kind: "loading" });
   const [claims, setClaims] = useState<LoadState<Claim[]>>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
@@ -198,7 +189,7 @@ export function ClaimsDesk() {
         ) : null}
       </section>
       <section className="panel" aria-labelledby="claims-heading">
-        <h2 id="claims-heading">Claims</h2>
+        <h2 id="claims-heading">My claims</h2>
         {claims.kind === "loading" ? <p className="state">Loading claims…</p> : null}
         {claims.kind === "error" ? (
           <div className="state">

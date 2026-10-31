@@ -45,11 +45,11 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. The dev server proxies `/api` to `http://localhost:8080`. Sign in as `amira.shah` with password `claimant-demo`.
+Open `http://localhost:5173`. The dev server proxies `/api` to `http://localhost:8080`. Sign in as `amira.shah` with password `claimant-demo`. To show the claims queue for every policy, sign in as the adjuster `dana.wells` with password `adjuster-demo`.
 
 Before the exercise, show behavior the suite already locks in:
 
-- Chris Dalton on `POL-1004` has a claim for `10000.00`, the same as the policy limit, and the status is Accepted.
+- Chris Dalton on `POL-1004` has a claim for `10000.00`, the same as the policy limit, and the status is Accepted. Sign in as `dana.wells` to see it in the claims queue.
 - Amira Shah on `POL-1001` already has `6000.00` and `4000.00` accepted. Submit `1.00` with both required documents. The new claim is Rejected because the open claims together pass the limit.
 
 ## How the pieces fit

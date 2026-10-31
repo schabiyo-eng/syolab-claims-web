@@ -6,8 +6,8 @@ import {
   logout,
   onUnauthorized,
 } from "./api/client";
-import type { CurrentUser } from "./api/types";
-import { ClaimsDesk } from "./components/ClaimsDesk";
+import type { CurrentUser, Role } from "./api/types";
+import { RoleHome } from "./components/RoleHome";
 import { SignIn } from "./components/SignIn";
 import { roleLabel } from "./domain/roles";
 
@@ -15,6 +15,11 @@ type AuthState =
   | { kind: "restoring" }
   | { kind: "signedOut"; notice: string | null }
   | { kind: "signedIn"; user: CurrentUser };
+
+const SKIP_LINK: Record<Role, { href: string; label: string }> = {
+  CLAIMANT: { href: "#claim-form", label: "Skip to claim form" },
+  ADJUSTER: { href: "#claims-queue", label: "Skip to claims queue" },
+};
 
 const SESSION_ENDED = "Your session has ended. Sign in again.";
 const RESTORE_FAILED = "Could not restore your session. Sign in again.";
@@ -104,8 +109,8 @@ export function App() {
     case "signedIn":
       return (
         <>
-          <a className="skip" href="#claim-form">
-            Skip to claim form
+          <a className="skip" href={SKIP_LINK[auth.user.role].href}>
+            {SKIP_LINK[auth.user.role].label}
           </a>
           <Banner>
             <div className="session">
@@ -118,7 +123,7 @@ export function App() {
               </button>
             </div>
           </Banner>
-          <ClaimsDesk />
+          <RoleHome role={auth.user.role} />
         </>
       );
   }
