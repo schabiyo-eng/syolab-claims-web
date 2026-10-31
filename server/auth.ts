@@ -1,8 +1,20 @@
 import { randomUUID } from "node:crypto";
 import type { CurrentUser, LoginResponse } from "../src/api/types";
+import type { Scope } from "./access";
 
-export interface DemoUser extends CurrentUser {
+interface DemoUserBase {
+  username: string;
   password: string;
+  displayName: string;
+}
+
+export type DemoUser =
+  | (DemoUserBase & { role: "ADJUSTER" })
+  | (DemoUserBase & { role: "CLAIMANT"; policyNumbers: readonly string[] });
+
+export interface Principal {
+  user: CurrentUser;
+  scope: Scope;
 }
 
 export const demoUsers: readonly DemoUser[] = [
@@ -11,6 +23,14 @@ export const demoUsers: readonly DemoUser[] = [
     password: "claimant-demo",
     role: "CLAIMANT",
     displayName: "Amira Shah",
+    policyNumbers: ["POL-1001"],
+  },
+  {
+    username: "luis.ortega",
+    password: "claimant-demo",
+    role: "CLAIMANT",
+    displayName: "Luis Ortega",
+    policyNumbers: ["POL-1002"],
   },
   {
     username: "dana.wells",
@@ -22,15 +42,27 @@ export const demoUsers: readonly DemoUser[] = [
 
 export interface Auth {
   login(username: string, password: string): LoginResponse | null;
-  userForAuthorization(header: string | undefined): CurrentUser | null;
+  principalFor(header: string | undefined): Principal | null;
 }
 
-function profileOf(user: DemoUser): CurrentUser {
-  return { username: user.username, role: user.role, displayName: user.displayName };
+function scopeOf(user: DemoUser): Scope {
+  switch (user.role) {
+    case "ADJUSTER":
+      return { kind: "all" };
+    case "CLAIMANT":
+      return { kind: "policies", policyNumbers: new Set(user.policyNumbers) };
+  }
+}
+
+function principalOf(user: DemoUser): Principal {
+  return {
+    user: { username: user.username, role: user.role, displayName: user.displayName },
+    scope: scopeOf(user),
+  };
 }
 
 export function createAuth(users: readonly DemoUser[] = demoUsers): Auth {
-  const sessions = new Map<string, CurrentUser>();
+  const sessions = new Map<string, Principal>();
 
   return {
     login(username, password) {
@@ -42,11 +74,11 @@ export function createAuth(users: readonly DemoUser[] = demoUsers): Auth {
         return null;
       }
       const token = randomUUID();
-      const profile = profileOf(user);
-      sessions.set(token, profile);
-      return { token, ...profile };
+      const principal = principalOf(user);
+      sessions.set(token, principal);
+      return { token, ...principal.user };
     },
-    userForAuthorization(header) {
+    principalFor(header) {
       const match = /^bearer\s+(\S+)$/i.exec(header?.trim() ?? "");
       if (!match?.[1]) {
         return null;

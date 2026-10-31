@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { canSee } from "./access";
 import { createAuth } from "./auth";
 import { systemClock } from "./clock";
 import { parseCreateClaim } from "./request";
@@ -84,23 +85,32 @@ const server = createServer(async (request, response) => {
       sendJson(response, 200, session);
       return;
     }
-    const user = auth.userForAuthorization(request.headers.authorization);
-    if (path.startsWith("/api/") && !user) {
-      sendJson(response, 401, { message: "Sign in to continue." });
+    const principal = auth.principalFor(request.headers.authorization);
+    if (!principal) {
+      if (path.startsWith("/api/")) {
+        sendJson(response, 401, { message: "Sign in to continue." });
+      } else {
+        sendJson(response, 404, { message: "Not found" });
+      }
       return;
     }
+    const { scope } = principal;
     if (method === "GET" && path === "/api/auth/me") {
-      sendJson(response, 200, user);
+      sendJson(response, 200, principal.user);
       return;
     }
     if (method === "GET" && path === "/api/policies") {
-      sendJson(response, 200, store.listPolicies());
+      sendJson(
+        response,
+        200,
+        store.listPolicies().filter((policy) => canSee(scope, policy.policyNumber)),
+      );
       return;
     }
     const policyMatch = /^\/api\/policies\/([^/]+)$/.exec(path);
     if (method === "GET" && policyMatch?.[1]) {
       const policy = store.getPolicy(decodeURIComponent(policyMatch[1]));
-      if (!policy) {
+      if (!policy || !canSee(scope, policy.policyNumber)) {
         sendJson(response, 404, { message: "Policy not found" });
         return;
       }
@@ -108,7 +118,11 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (method === "GET" && path === "/api/claims") {
-      sendJson(response, 200, store.listClaims());
+      sendJson(
+        response,
+        200,
+        store.listClaims().filter((claim) => canSee(scope, claim.policyNumber)),
+      );
       return;
     }
     if (method === "POST" && path === "/api/claims") {
@@ -125,13 +139,17 @@ const server = createServer(async (request, response) => {
         sendJson(response, 400, { message: claim.message });
         return;
       }
+      if (!canSee(scope, claim.claim.policyNumber)) {
+        sendJson(response, 404, { message: "Policy not found" });
+        return;
+      }
       sendJson(response, 201, store.createClaim(claim.claim));
       return;
     }
     const claimMatch = /^\/api\/claims\/([^/]+)$/.exec(path);
     if (method === "GET" && claimMatch?.[1]) {
       const claim = store.getClaim(decodeURIComponent(claimMatch[1]));
-      if (!claim) {
+      if (!claim || !canSee(scope, claim.policyNumber)) {
         sendJson(response, 404, { message: "Claim not found" });
         return;
       }

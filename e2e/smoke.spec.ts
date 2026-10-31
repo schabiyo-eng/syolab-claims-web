@@ -1,11 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { signIn } from "./signIn";
+import { CLAIMANT_LUIS, signIn } from "./signIn";
 
 test("loads the desk and accepts a small POL-1002 claim", async ({ page }) => {
   await page.goto("/");
-  await signIn(page);
+  await signIn(page, CLAIMANT_LUIS);
   await expect(page.getByRole("heading", { name: "Claims intake" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Amira Shah" }).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Luis Ortega" }).first(),
+  ).toBeVisible();
 
   await page.getByLabel("Policy").selectOption("POL-1002");
   await expect(page.getByRole("checkbox", { name: "medical-bill" })).toBeVisible();
