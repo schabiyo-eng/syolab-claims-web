@@ -1,5 +1,4 @@
 import type { DecisionChoice } from "../src/api/types";
-import { MAX_COMMENT_LENGTH } from "../src/domain/comments";
 import { isIsoDate } from "../src/domain/dates";
 import { DECISION_ACTIONS, noteRequired } from "../src/domain/decision";
 import { parseAmount } from "../src/domain/money";
@@ -104,14 +103,7 @@ export function parseCommentRequest(body: unknown): CommentParseResult {
   if (typeof body.body !== "string" || body.body.trim() === "") {
     return { ok: false, message: "Comment body is required." };
   }
-  const text = body.body.trim();
-  if (text.length > MAX_COMMENT_LENGTH) {
-    return {
-      ok: false,
-      message: `Comment body must be at most ${MAX_COMMENT_LENGTH} characters.`,
-    };
-  }
-  return { ok: true, body: text };
+  return { ok: true, body: body.body.trim() };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

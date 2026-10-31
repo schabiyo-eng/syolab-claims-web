@@ -70,11 +70,11 @@ test("a claimant opens an info request, replies, and keeps the reply after reloa
   const timeline = panel(page, "Timeline").getByRole("listitem");
   await expect(timeline.filter({ hasText: "Submitted" })).toHaveCount(1);
   await expect(timeline.filter({ hasText: "Pending → Info requested" })).toContainText(
-    ADJUSTER.displayName,
+    ADJUSTER.username,
   );
   const comments = panel(page, "Comments");
   await expect(
-    comments.getByRole("listitem").filter({ hasText: ADJUSTER.displayName }),
+    comments.getByRole("listitem").filter({ hasText: ADJUSTER.username }),
   ).toContainText(INFO_REQUEST);
   for (const name of DECISION_BUTTONS) {
     await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
@@ -144,13 +144,46 @@ test("the API enforces decision rules", async ({ request }) => {
   expect(approved.status()).toBe(200);
   const body = (await approved.json()) as { decision: string; history: unknown[] };
   expect(body.decision).toBe("APPROVED");
-  expect(body.history).toHaveLength(2);
+  expect(body.history).toHaveLength(1);
 
   const again = await request.post(`${STUB}/api/claims/${id}/decision`, {
     headers: dana,
     data: { decision: "APPROVED" },
   });
   expect(again.status()).toBe(409);
+
+  const repeated = await createAmiraClaim(request, uniqueDescription("API repeat"));
+  for (const [decision, length] of [
+    ["INFO_REQUESTED", 1],
+    ["INFO_REQUESTED", 2],
+    ["APPROVED", 3],
+  ] as const) {
+    const decided = await request.post(`${STUB}/api/claims/${repeated}/decision`, {
+      headers: dana,
+      data: { decision, note: "Please add the repair invoice." },
+    });
+    expect(decided.status()).toBe(200);
+    const claim = (await decided.json()) as { decision: string; history: unknown[] };
+    expect(claim.decision).toBe(decision);
+    expect(claim.history).toHaveLength(length);
+  }
+  const afterFinal = await request.post(`${STUB}/api/claims/${repeated}/decision`, {
+    headers: dana,
+    data: { decision: "INFO_REQUESTED", note: "One more thing." },
+  });
+  expect(afterFinal.status()).toBe(409);
+});
+
+test("the API lists every claim with its history", async ({ request }) => {
+  const list = await request.get(`${STUB}/api/claims`, {
+    headers: await tokenFor(request, ADJUSTER),
+  });
+  expect(list.status()).toBe(200);
+  const claims = (await list.json()) as { history?: unknown }[];
+  expect(claims.length).toBeGreaterThan(0);
+  for (const claim of claims) {
+    expect(Array.isArray(claim.history)).toBe(true);
+  }
 });
 
 test("an adjuster opens a queue row", async ({ page }) => {
@@ -166,7 +199,7 @@ test("an adjuster opens a queue row", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Decision" })).toBeVisible();
 });
 
-test("an adjuster requests info, then approves, and the claimant sees it", async ({
+test("an adjuster requests info twice, then approves, and the claimant sees it", async ({
   page,
   request,
   browser,
@@ -194,6 +227,16 @@ test("an adjuster requests info, then approves, and the claimant sees it", async
       .getByRole("listitem")
       .filter({ hasText: "Pending → Info requested" }),
   ).toContainText("Please add the repair invoice.");
+
+  await page.getByLabel("Decision note").fill("Please add the tow receipt too.");
+  await page.getByRole("button", { name: "Request info", exact: true }).click();
+  await expect(page.getByLabel("Decision note")).toHaveValue("");
+  const repeat = panel(page, "Timeline")
+    .getByRole("listitem")
+    .filter({ hasText: "Info requested → Info requested" });
+  await expect(repeat).toContainText("Please add the tow receipt too.");
+  await expect(repeat).toContainText(ADJUSTER.username);
+  await expect(decision).toContainText("Decision: Info requested");
 
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await expect(decision).toContainText("Decision: Approved");

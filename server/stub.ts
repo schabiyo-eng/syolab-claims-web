@@ -153,11 +153,7 @@ const server = createServer(async (request, response) => {
         sendJson(response, 404, { message: "Policy not found" });
         return;
       }
-      sendJson(
-        response,
-        201,
-        store.createClaim(claim.claim, principal.user.displayName),
-      );
+      sendJson(response, 201, store.createClaim(claim.claim));
       return;
     }
     const claimMatch = /^\/api\/claims\/([^/]+)$/.exec(path);
@@ -177,10 +173,6 @@ const server = createServer(async (request, response) => {
         return;
       }
       const id = decodeURIComponent(decisionMatch[1]);
-      if (!store.getClaim(id)) {
-        sendJson(response, 404, { message: "Claim not found" });
-        return;
-      }
       const body = await readJson(request);
       if (!body.ok) {
         sendJson(response, 400, { message: body.message });
@@ -191,11 +183,7 @@ const server = createServer(async (request, response) => {
         sendJson(response, 400, { message: decision.message });
         return;
       }
-      const result = store.decideClaim(
-        id,
-        decision.request,
-        principal.user.displayName,
-      );
+      const result = store.decideClaim(id, decision.request, principal.user.username);
       if (!result) {
         sendJson(response, 404, { message: "Claim not found" });
         return;
@@ -213,11 +201,12 @@ const server = createServer(async (request, response) => {
     if ((method === "GET" || method === "POST") && commentsMatch?.[1]) {
       const id = decodeURIComponent(commentsMatch[1]);
       const claim = store.getClaim(id);
-      if (!claim || !canSee(scope, claim.policyNumber)) {
-        sendJson(response, 404, { message: "Claim not found" });
-        return;
-      }
+      const visible = claim !== undefined && canSee(scope, claim.policyNumber);
       if (method === "GET") {
+        if (!visible) {
+          sendJson(response, 404, { message: "Claim not found" });
+          return;
+        }
         sendJson(response, 200, store.listComments(id));
         return;
       }
@@ -231,8 +220,12 @@ const server = createServer(async (request, response) => {
         sendJson(response, 400, { message: comment.message });
         return;
       }
+      if (!visible) {
+        sendJson(response, 404, { message: "Claim not found" });
+        return;
+      }
       const stored = store.addComment(id, {
-        author: principal.user.displayName,
+        author: principal.user.username,
         role: principal.user.role,
         body: comment.body,
       });

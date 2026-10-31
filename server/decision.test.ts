@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { ClaimDetail, Decision } from "../src/api/types";
+import type { Claim, Decision } from "../src/api/types";
 import { decide } from "./decision";
 
 const AT = "2026-06-02T10:00:00.000Z";
 
-function claim(decision: Decision = "PENDING"): ClaimDetail {
+function claim(decision: Decision = "PENDING"): Claim {
   return {
     id: "c9999999-9999-4999-8999-999999999999",
     policyNumber: "POL-2000",
@@ -17,16 +17,7 @@ function claim(decision: Decision = "PENDING"): ClaimDetail {
     findings: [],
     decision,
     createdAt: "2026-06-01T10:00:00.000Z",
-    history: [
-      {
-        at: "2026-06-01T10:00:00.000Z",
-        actor: "Rae Quinn",
-        action: "SUBMITTED",
-        fromDecision: null,
-        toDecision: "PENDING",
-        note: null,
-      },
-    ],
+    history: [],
   };
 }
 
@@ -36,17 +27,16 @@ describe("decide", () => {
     const result = decide(
       before,
       { decision: "DENIED", note: "Expired." },
-      "Dana Wells",
+      "dana.wells",
       AT,
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.claim.decision).toBe("DENIED");
     expect(result.claim.history).toEqual([
-      before.history[0],
       {
         at: AT,
-        actor: "Dana Wells",
+        actor: "dana.wells",
         action: "DECIDED",
         fromDecision: "PENDING",
         toDecision: "DENIED",
@@ -57,9 +47,9 @@ describe("decide", () => {
 
   it("does not mutate the input claim", () => {
     const before = claim();
-    decide(before, { decision: "APPROVED", note: null }, "Dana Wells", AT);
+    decide(before, { decision: "APPROVED", note: null }, "dana.wells", AT);
     expect(before.decision).toBe("PENDING");
-    expect(before.history).toHaveLength(1);
+    expect(before.history).toHaveLength(0);
   });
 
   it("lets an info request move to any decision, including another request", () => {
@@ -67,7 +57,7 @@ describe("decide", () => {
       const result = decide(
         claim("INFO_REQUESTED"),
         { decision, note: "Next step." },
-        "Dana Wells",
+        "dana.wells",
         AT,
       );
       expect(result.ok && result.claim.decision).toBe(decision);
@@ -77,11 +67,42 @@ describe("decide", () => {
     }
   });
 
+  it("appends a second entry when info is requested again", () => {
+    const first = decide(
+      claim(),
+      { decision: "INFO_REQUESTED", note: "Send the bill." },
+      "dana.wells",
+      AT,
+    );
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const second = decide(
+      first.claim,
+      { decision: "INFO_REQUESTED", note: "Send the receipt too." },
+      "dana.wells",
+      "2026-06-03T10:00:00.000Z",
+    );
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.claim.decision).toBe("INFO_REQUESTED");
+    expect(
+      second.claim.history.map((entry) => [entry.fromDecision, entry.toDecision]),
+    ).toEqual([
+      ["PENDING", "INFO_REQUESTED"],
+      ["INFO_REQUESTED", "INFO_REQUESTED"],
+    ]);
+    expect(second.claim.history.at(-1)).toMatchObject({
+      actor: "dana.wells",
+      action: "DECIDED",
+      note: "Send the receipt too.",
+    });
+  });
+
   it("refuses to change an approved or denied claim", () => {
     for (const final of ["APPROVED", "DENIED"] as const) {
       for (const decision of ["APPROVED", "DENIED", "INFO_REQUESTED"] as const) {
         expect(
-          decide(claim(final), { decision, note: "Again." }, "Dana Wells", AT),
+          decide(claim(final), { decision, note: "Again." }, "dana.wells", AT),
         ).toEqual({ ok: false, reason: "final" });
       }
     }

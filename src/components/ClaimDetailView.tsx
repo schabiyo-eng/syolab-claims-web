@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import type { ClaimDetail, Comment, DecisionChoice, Role } from "../api/types";
+import type { Claim, Comment, DecisionChoice, Role } from "../api/types";
 import { shortId } from "../domain/claims";
 import { MAX_COMMENT_LENGTH } from "../domain/comments";
 import { formatDateTime } from "../domain/dates";
@@ -31,7 +31,7 @@ export interface CommentFormState {
 }
 
 interface ClaimDetailViewProps {
-  claim: ClaimDetail;
+  claim: Claim;
   comments: readonly Comment[];
   role: Role;
   decisionForm: DecisionFormState;
@@ -181,6 +181,11 @@ export function ClaimDetailView({
       <section className="panel" aria-labelledby="detail-timeline-heading">
         <h3 id="detail-timeline-heading">Timeline</h3>
         <ol className="timeline">
+          <li>
+            <p className="timeline-line">
+              <Timestamp value={claim.createdAt} /> · <strong>Submitted</strong>
+            </p>
+          </li>
           {claim.history.map((entry, index) => (
             <li key={`${entry.at}-${index}`}>
               <p className="timeline-line">

@@ -73,15 +73,17 @@ describe("parseCommentRequest", () => {
       ok: true,
       body: "I have uploaded the bill.",
     });
-    expect(parseCommentRequest({ body: "x".repeat(2000) }).ok).toBe(true);
+    expect(parseCommentRequest({ body: "x".repeat(5000) })).toEqual({
+      ok: true,
+      body: "x".repeat(5000),
+    });
   });
 
-  it("rejects a missing, blank, non-string, or too-long body", () => {
+  it("rejects a missing, blank, or non-string body", () => {
     expect(parseCommentRequest({}).ok).toBe(false);
     expect(parseCommentRequest({ body: "" }).ok).toBe(false);
     expect(parseCommentRequest({ body: "  \n " }).ok).toBe(false);
     expect(parseCommentRequest({ body: 12 }).ok).toBe(false);
-    expect(parseCommentRequest({ body: "x".repeat(2001) }).ok).toBe(false);
     expect(parseCommentRequest("hello").ok).toBe(false);
   });
 });

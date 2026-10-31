@@ -52,16 +52,9 @@ function decisionVerb(decision: DecisionChoice): string {
 }
 
 export function historyActionText(
-  entry: Pick<HistoryEntry, "action" | "fromDecision" | "toDecision">,
+  entry: Pick<HistoryEntry, "fromDecision" | "toDecision">,
 ): string {
-  switch (entry.action) {
-    case "SUBMITTED":
-      return "Submitted";
-    case "DECIDED":
-      return entry.fromDecision === null
-        ? decisionLabel(entry.toDecision)
-        : `${decisionLabel(entry.fromDecision)} → ${decisionLabel(entry.toDecision)}`;
-  }
+  return `${decisionLabel(entry.fromDecision)} → ${decisionLabel(entry.toDecision)}`;
 }
 
 export function latestDecisionNote(history: readonly HistoryEntry[]): string | null {
