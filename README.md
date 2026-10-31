@@ -43,7 +43,7 @@ Sign in with one of the stub's demo logins:
 | `amira.shah` | `claimant-demo` | Claimant | Amira Shah   |
 | `dana.wells` | `adjuster-demo` | Adjuster | Dana Wells   |
 
-`POST /api/auth/login` returns a token. Every other `/api` call needs it in an `Authorization: Bearer <token>` header and gets a 401 without it. The app keeps the token in session storage, so it lasts until the tab closes or you log out.
+`POST /api/auth/login` returns a token. Every other `/api` call needs it in an `Authorization: Bearer <token>` header and gets a 401 without it. The app keeps the token in session storage, so it lasts until the tab closes or you log out. The stub keeps tokens in memory, so restarting it signs everyone out.
 
 ## Unit tests
 
