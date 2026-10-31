@@ -1,11 +1,32 @@
 import { expect, type Page } from "@playwright/test";
 
+export interface DemoAccount {
+  username: string;
+  password: string;
+  displayName: string;
+  roleLabel: string;
+}
+
 export const CLAIMANT = {
   username: "amira.shah",
   password: "claimant-demo",
   displayName: "Amira Shah",
   roleLabel: "Claimant",
-} as const;
+} as const satisfies DemoAccount;
+
+export const CLAIMANT_LUIS = {
+  username: "luis.ortega",
+  password: "claimant-demo",
+  displayName: "Luis Ortega",
+  roleLabel: "Claimant",
+} as const satisfies DemoAccount;
+
+export const ADJUSTER = {
+  username: "dana.wells",
+  password: "adjuster-demo",
+  displayName: "Dana Wells",
+  roleLabel: "Adjuster",
+} as const satisfies DemoAccount;
 
 export const TOKEN_KEY = "syolab.claims.token";
 
@@ -15,7 +36,7 @@ export async function fillSignIn(page: Page, username: string, password: string)
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-export async function signIn(page: Page) {
-  await fillSignIn(page, CLAIMANT.username, CLAIMANT.password);
+export async function signIn(page: Page, account: DemoAccount = CLAIMANT) {
+  await fillSignIn(page, account.username, account.password);
   await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 }

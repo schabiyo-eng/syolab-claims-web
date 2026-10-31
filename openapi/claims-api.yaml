@@ -51,6 +51,7 @@ paths:
     get:
       operationId: listPolicies
       summary: List policies
+      description: Results are scoped to the caller. Claimants see only their own policies. Adjusters see every policy.
       responses:
         "200":
           description: Policies in stable policy-number order
@@ -66,6 +67,7 @@ paths:
     get:
       operationId: getPolicy
       summary: Get one policy
+      description: Scoped to the caller. Claimants can read only their own policies. Adjusters can read any policy. A policy outside the caller's scope returns 404, the same as a missing one.
       parameters:
         - $ref: "#/components/parameters/PolicyNumber"
       responses:
@@ -83,6 +85,7 @@ paths:
     get:
       operationId: listClaims
       summary: List claims newest first
+      description: Results are scoped to the caller. Claimants see only claims on their own policies. Adjusters see every claim.
       responses:
         "200":
           description: Claims ordered by createdAt descending
@@ -97,6 +100,7 @@ paths:
     post:
       operationId: createClaim
       summary: Submit a claim and run validation
+      description: A claimant can file only on their own policies. A claim on any other policy returns 404 and is not stored.
       requestBody:
         required: true
         content:
@@ -114,10 +118,13 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/claims/{id}:
     get:
       operationId: getClaim
       summary: Get one claim
+      description: Scoped to the caller. Claimants can read only claims on their own policies. Adjusters can read any claim. A claim outside the caller's scope returns 404, the same as a missing one.
       parameters:
         - $ref: "#/components/parameters/ClaimId"
       responses:

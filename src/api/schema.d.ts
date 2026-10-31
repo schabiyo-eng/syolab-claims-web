@@ -45,7 +45,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List policies */
+        /**
+         * List policies
+         * @description Results are scoped to the caller. Claimants see only their own policies. Adjusters see every policy.
+         */
         get: operations["listPolicies"];
         put?: never;
         post?: never;
@@ -62,7 +65,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one policy */
+        /**
+         * Get one policy
+         * @description Scoped to the caller. Claimants can read only their own policies. Adjusters can read any policy. A policy outside the caller's scope returns 404, the same as a missing one.
+         */
         get: operations["getPolicy"];
         put?: never;
         post?: never;
@@ -79,10 +85,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List claims newest first */
+        /**
+         * List claims newest first
+         * @description Results are scoped to the caller. Claimants see only claims on their own policies. Adjusters see every claim.
+         */
         get: operations["listClaims"];
         put?: never;
-        /** Submit a claim and run validation */
+        /**
+         * Submit a claim and run validation
+         * @description A claimant can file only on their own policies. A claim on any other policy returns 404 and is not stored.
+         */
         post: operations["createClaim"];
         delete?: never;
         options?: never;
@@ -97,7 +109,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one claim */
+        /**
+         * Get one claim
+         * @description Scoped to the caller. Claimants can read only claims on their own policies. Adjusters can read any claim. A claim outside the caller's scope returns 404, the same as a missing one.
+         */
         get: operations["getClaim"];
         put?: never;
         post?: never;
@@ -372,6 +387,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getClaim: {
