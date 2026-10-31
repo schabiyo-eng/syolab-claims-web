@@ -36,13 +36,22 @@ npm run stub
 
 The stub listens on `http://127.0.0.1:8080`. In another terminal, run `npm run dev`.
 
+Sign in with one of the stub's demo logins:
+
+| Username     | Password        | Role     | Display name |
+| ------------ | --------------- | -------- | ------------ |
+| `amira.shah` | `claimant-demo` | Claimant | Amira Shah   |
+| `dana.wells` | `adjuster-demo` | Adjuster | Dana Wells   |
+
+`POST /api/auth/login` returns a token. Every other `/api` call needs it in an `Authorization: Bearer <token>` header and gets a 401 without it. The app keeps the token in session storage, so it lasts until the tab closes or you log out.
+
 ## Unit tests
 
 ```bash
 npm test
 ```
 
-Form validation and status labels are covered here. The stub's claim rules are covered too, so the seed statuses stay aligned with the contract.
+Form validation, status labels, and the API client's token handling are covered here. The stub's claim rules and logins are covered too, so the seed statuses stay aligned with the contract.
 
 ## Regenerate API types
 
@@ -54,7 +63,7 @@ Commit the generated `src/api/schema.d.ts`. `npm run check:api` regenerates it a
 
 ## Browser smoke
 
-`npm run e2e` starts the stub and the Vite dev server, then runs the Playwright smoke in Chromium. The smoke opens the desk, sees Amira Shah, and submits a `100.00` claim on `POL-1002`.
+`npm run e2e` starts the stub and the Vite dev server, then runs the Playwright smoke in Chromium. The smoke signs in as `amira.shah`, sees Amira Shah, and submits a `100.00` claim on `POL-1002`.
 
 ## Browser smoke against the Spring API
 

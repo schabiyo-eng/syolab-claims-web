@@ -52,9 +52,77 @@ textarea {
 }
 
 .banner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem 2rem;
   background: var(--header);
   color: var(--header-text);
   padding: 2.4rem 4vw 2.1rem;
+}
+
+.session {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.session-user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.session-name {
+  font-weight: 700;
+}
+
+.session-role {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e5f0ea;
+}
+
+.logout {
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  background: transparent;
+  color: var(--header-text);
+  border: 2px solid var(--header-text);
+  cursor: pointer;
+}
+
+.logout:focus-visible {
+  outline-color: var(--header-text);
+}
+
+.sign-in {
+  width: min(460px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+}
+
+.sign-in input {
+  width: 100%;
+}
+
+.notice {
+  margin: 0 0 0.9rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--flagged-bg);
+  color: var(--flagged-ink);
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.sign-in-error {
+  margin-bottom: 0.8rem;
 }
 
 .eyebrow {
