@@ -1,7 +1,11 @@
 import type {
   Claim,
+  ClaimDetail,
+  Comment,
+  CommentRequest,
   CreateClaimRequest,
   CurrentUser,
+  DecisionRequest,
   ErrorMessage,
   LoginRequest,
   LoginResponse,
@@ -141,6 +145,33 @@ export function listClaims(): Promise<Claim[]> {
 
 export function createClaim(body: CreateClaimRequest): Promise<Claim> {
   return request<Claim>("/api/claims", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+function claimPath(id: string): string {
+  return `/api/claims/${encodeURIComponent(id)}`;
+}
+
+export function getClaim(id: string): Promise<ClaimDetail> {
+  return request<ClaimDetail>(claimPath(id));
+}
+
+export function decideClaim(id: string, body: DecisionRequest): Promise<ClaimDetail> {
+  return request<ClaimDetail>(`${claimPath(id)}/decision`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function listComments(id: string): Promise<Comment[]> {
+  return request<Comment[]>(`${claimPath(id)}/comments`);
+}
+
+export function postComment(id: string, text: string): Promise<Comment> {
+  const body: CommentRequest = { body: text };
+  return request<Comment>(`${claimPath(id)}/comments`, {
     method: "POST",
     body: JSON.stringify(body),
   });

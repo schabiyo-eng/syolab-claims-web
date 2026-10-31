@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
+  decideClaim,
+  getClaim,
   hasSession,
   listClaims,
   login,
   logout,
   onUnauthorized,
+  postComment,
 } from "./client";
 
 function memoryStorage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
@@ -160,5 +163,51 @@ describe("logout", () => {
     fetchMock.mockResolvedValueOnce(json(200, []));
     await listClaims();
     expect(authorizationOf(1)).toBeNull();
+  });
+});
+
+describe("claim detail calls", () => {
+  it("encode the id and attach the bearer token", async () => {
+    await signIn("token-2");
+    fetchMock.mockResolvedValueOnce(json(200, { id: "a/b", history: [] }));
+
+    await getClaim("a/b");
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/claims/a%2Fb");
+    expect(authorizationOf(1)).toBe("Bearer token-2");
+  });
+
+  it("post a decision and surface a 409 as an ApiError", async () => {
+    await signIn();
+    fetchMock.mockResolvedValueOnce(
+      json(409, { message: "This claim already has a final decision." }),
+    );
+
+    const error = await decideClaim("c1", { decision: "APPROVED" }).catch(
+      (caught: unknown) => caught,
+    );
+
+    const [path, init] = fetchMock.mock.calls[1] ?? [];
+    expect(path).toBe("/api/claims/c1/decision");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ decision: "APPROVED" });
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({
+      statusCode: 409,
+      message: "This claim already has a final decision.",
+    });
+    expect(hasSession()).toBe(true);
+  });
+
+  it("post a comment body", async () => {
+    await signIn();
+    fetchMock.mockResolvedValueOnce(json(201, { id: "m1", body: "Uploaded." }));
+
+    await postComment("c1", "Uploaded.");
+
+    const [path, init] = fetchMock.mock.calls[1] ?? [];
+    expect(path).toBe("/api/claims/c1/comments");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ body: "Uploaded." });
   });
 });

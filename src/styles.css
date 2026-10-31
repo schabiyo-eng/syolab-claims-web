@@ -14,6 +14,14 @@
   --flagged-ink: #7a4d00;
   --rejected-bg: #fde7ea;
   --rejected-ink: #8d1d2c;
+  --pending-bg: #efebe2;
+  --pending-ink: #4f4940;
+  --approved-bg: #e5f5ee;
+  --approved-ink: #0c5b42;
+  --denied-bg: #fde7ea;
+  --denied-ink: #8d1d2c;
+  --info-bg: #e4eef8;
+  --info-ink: #1d4b7a;
   --focus: #1c6b54;
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   font-size: 20px;
@@ -385,6 +393,202 @@ button[type="submit"]:disabled {
   color: var(--rejected-ink);
 }
 
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.decision {
+  width: fit-content;
+  margin: 0;
+  font-weight: 700;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  padding: 0.05rem 0.7rem;
+  white-space: nowrap;
+}
+
+.decision-pending {
+  background: var(--pending-bg);
+  color: var(--pending-ink);
+}
+
+.decision-approved {
+  background: var(--approved-bg);
+  color: var(--approved-ink);
+}
+
+.decision-denied {
+  background: var(--denied-bg);
+  color: var(--denied-ink);
+}
+
+.decision-info-requested {
+  background: var(--info-bg);
+  color: var(--info-ink);
+}
+
+.claim-link,
+.back {
+  color: var(--accent);
+  text-underline-offset: 0.18em;
+}
+
+.claim-link:focus-visible,
+.back:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.4rem;
+  width: min(1200px, calc(100% - 8vw));
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+}
+
+.detail-head,
+.detail-wide {
+  grid-column: 1 / -1;
+}
+
+.detail-head h2 {
+  margin: 0.4rem 0 0;
+}
+
+.panel h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.25rem;
+}
+
+.detail-status {
+  display: inline-block;
+  margin-bottom: 0.8rem;
+}
+
+.finding-list,
+.timeline,
+.comment-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finding-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.finding-code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.severity {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.severity-error {
+  color: var(--rejected-ink);
+}
+
+.severity-warning {
+  color: var(--flagged-ink);
+}
+
+.decision-form {
+  margin-top: 0.9rem;
+}
+
+.decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 0.7rem;
+}
+
+.action {
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+  background: #fff;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  cursor: pointer;
+}
+
+.action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.info-request {
+  margin-top: 0.9rem;
+  background: var(--info-bg);
+  color: var(--info-ink);
+  border-left: 6px solid var(--info-ink);
+}
+
+.info-request p {
+  margin: 0;
+}
+
+.info-request-note {
+  margin-top: 0.4rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.timeline li,
+.comment-list li {
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.timeline-line,
+.timeline-note,
+.comment-meta,
+.comment-body {
+  margin: 0;
+}
+
+.timeline-line,
+.comment-meta {
+  color: var(--muted);
+}
+
+.timeline-line strong,
+.comment-meta strong {
+  color: var(--ink);
+}
+
+.timeline-note,
+.comment-body {
+  white-space: pre-wrap;
+}
+
+.comment-role {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.comment-form {
+  margin-top: 1rem;
+}
+
 .meta,
 .description,
 .findings {
@@ -406,7 +610,8 @@ button[type="submit"]:disabled {
     font-size: 18px;
   }
 
-  .layout {
+  .layout,
+  .detail {
     grid-template-columns: 1fr;
     width: min(720px, calc(100% - 2rem));
   }

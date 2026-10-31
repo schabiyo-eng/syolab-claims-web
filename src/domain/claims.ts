@@ -8,3 +8,7 @@ export function newestFirst<T extends { createdAt: string }>(
     return left.createdAt < right.createdAt ? 1 : -1;
   });
 }
+
+export function shortId(id: string): string {
+  return id.split("-")[0] ?? id;
+}

@@ -7,9 +7,12 @@ import {
   onUnauthorized,
 } from "./api/client";
 import type { CurrentUser, Role } from "./api/types";
+import { ClaimDetail } from "./components/ClaimDetail";
+import { CLAIM_DETAIL_ID } from "./components/ClaimDetailView";
 import { RoleHome } from "./components/RoleHome";
 import { SignIn } from "./components/SignIn";
 import { roleLabel } from "./domain/roles";
+import { navigate, useRoute, type Route } from "./routing";
 
 type AuthState =
   | { kind: "restoring" }
@@ -20,6 +23,15 @@ const SKIP_LINK: Record<Role, { href: string; label: string }> = {
   CLAIMANT: { href: "#claim-form", label: "Skip to claim form" },
   ADJUSTER: { href: "#claims-queue", label: "Skip to claims queue" },
 };
+
+const DETAIL_SKIP_LINK = {
+  href: `#${CLAIM_DETAIL_ID}`,
+  label: "Skip to claim details",
+};
+
+function skipLinkFor(route: Route, role: Role): { href: string; label: string } {
+  return route.kind === "claim" ? DETAIL_SKIP_LINK : SKIP_LINK[role];
+}
 
 const SESSION_ENDED = "Your session has ended. Sign in again.";
 const RESTORE_FAILED = "Could not restore your session. Sign in again.";
@@ -45,6 +57,7 @@ function Banner({ children }: { children?: ReactNode }) {
 
 export function App() {
   const [auth, setAuth] = useState<AuthState>(initialAuth);
+  const route = useRoute();
 
   useEffect(
     () =>
@@ -82,6 +95,7 @@ export function App() {
   function signOut() {
     logout();
     setAuth({ kind: "signedOut", notice: null });
+    navigate({ kind: "home" });
   }
 
   switch (auth.kind) {
@@ -106,11 +120,12 @@ export function App() {
           />
         </>
       );
-    case "signedIn":
+    case "signedIn": {
+      const skip = skipLinkFor(route, auth.user.role);
       return (
         <>
-          <a className="skip" href={SKIP_LINK[auth.user.role].href}>
-            {SKIP_LINK[auth.user.role].label}
+          <a className="skip" href={skip.href}>
+            {skip.label}
           </a>
           <Banner>
             <div className="session">
@@ -123,8 +138,13 @@ export function App() {
               </button>
             </div>
           </Banner>
-          <RoleHome role={auth.user.role} />
+          {route.kind === "claim" ? (
+            <ClaimDetail key={route.id} id={route.id} role={auth.user.role} />
+          ) : (
+            <RoleHome role={auth.user.role} />
+          )}
         </>
       );
+    }
   }
 }
