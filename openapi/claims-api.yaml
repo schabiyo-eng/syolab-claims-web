@@ -129,11 +129,90 @@ paths:
         - $ref: "#/components/parameters/ClaimId"
       responses:
         "200":
-          description: The claim
+          description: The claim with its decision history
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Claim"
+                $ref: "#/components/schemas/ClaimDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/claims/{id}/decision:
+    post:
+      operationId: decideClaim
+      summary: Record an adjuster decision on a claim
+      description: >-
+        Adjusters only. A claimant gets 403 before the claim or body is checked.
+        A note is required for DENIED and INFO_REQUESTED and optional for APPROVED.
+        APPROVED and DENIED are final, so a later decision returns 409.
+        INFO_REQUESTED is not final and can move to APPROVED, DENIED, or INFO_REQUESTED again.
+      parameters:
+        - $ref: "#/components/parameters/ClaimId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+      responses:
+        "200":
+          description: The updated claim with a new DECIDED history entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/claims/{id}/comments:
+    get:
+      operationId: listComments
+      summary: List comments on a claim oldest first
+      description: Scoped to the caller. Claimants can read comments only on claims on their own policies. Adjusters can read comments on any claim. A claim outside the caller's scope returns 404, the same as a missing one.
+      parameters:
+        - $ref: "#/components/parameters/ClaimId"
+      responses:
+        "200":
+          description: Comments ordered by at ascending
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: addComment
+      summary: Add a comment to a claim
+      description: Scoped to the caller. Claimants can comment only on claims on their own policies. Adjusters can comment on any claim. A claim outside the caller's scope returns 404, the same as a missing one. The author and role come from the bearer token.
+      parameters:
+        - $ref: "#/components/parameters/ClaimId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentRequest"
+      responses:
+        "201":
+          description: Comment stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -172,6 +251,18 @@ components:
             $ref: "#/components/schemas/ErrorMessage"
     Unauthorized:
       description: Missing, unknown, or expired bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    Forbidden:
+      description: The caller's role may not perform this action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    Conflict:
+      description: The request conflicts with the resource's current state
       content:
         application/json:
           schema:
@@ -280,7 +371,7 @@ components:
             type: string
     Claim:
       type: object
-      additionalProperties: false
+      description: ClaimDetail extends this schema with history, so it allows extra properties.
       required:
         - id
         - policyNumber
@@ -291,6 +382,7 @@ components:
         - documentNames
         - status
         - findings
+        - decision
         - createdAt
       properties:
         id:
@@ -318,9 +410,92 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ValidationFinding"
+        decision:
+          $ref: "#/components/schemas/Decision"
         createdAt:
           type: string
           format: date-time
+    Decision:
+      type: string
+      description: The adjuster decision, separate from the validation status. APPROVED and DENIED are final.
+      enum: [PENDING, APPROVED, DENIED, INFO_REQUESTED]
+    DecisionChoice:
+      type: string
+      description: A decision an adjuster can record. PENDING is only the starting state.
+      enum: [APPROVED, DENIED, INFO_REQUESTED]
+    DecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          $ref: "#/components/schemas/DecisionChoice"
+        note:
+          type: string
+          description: Required and non-blank for DENIED and INFO_REQUESTED. Optional for APPROVED.
+    HistoryEntry:
+      type: object
+      additionalProperties: false
+      required: [at, actor, action, fromDecision, toDecision, note]
+      properties:
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+          description: Display name of the user who acted
+        action:
+          type: string
+          enum: [SUBMITTED, DECIDED]
+        fromDecision:
+          allOf:
+            - $ref: "#/components/schemas/Decision"
+          nullable: true
+          description: Null for SUBMITTED
+        toDecision:
+          $ref: "#/components/schemas/Decision"
+        note:
+          type: string
+          nullable: true
+    ClaimDetail:
+      allOf:
+        - $ref: "#/components/schemas/Claim"
+        - type: object
+          required: [history]
+          properties:
+            history:
+              type: array
+              description: Ordered oldest first
+              items:
+                $ref: "#/components/schemas/HistoryEntry"
+    Comment:
+      type: object
+      additionalProperties: false
+      required: [id, at, author, role, body]
+      properties:
+        id:
+          type: string
+          format: uuid
+        at:
+          type: string
+          format: date-time
+        author:
+          type: string
+          description: Display name of the user who wrote the comment
+        role:
+          $ref: "#/components/schemas/Role"
+        body:
+          type: string
+    CommentRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Non-blank after trimming, at most 2000 characters
     ValidationFinding:
       type: object
       additionalProperties: false

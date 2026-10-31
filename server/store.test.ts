@@ -178,3 +178,155 @@ describe("coverage rules", () => {
     expect(future.findings.map((finding) => finding.code)).toContain("POSSIBLE_FRAUD");
   });
 });
+
+describe("decisions and history", () => {
+  const LUIS = "c3333333-3333-4333-8333-333333333333";
+
+  it("starts a new claim pending with a SUBMITTED entry by the submitting user", () => {
+    const store = createStore({ clock, policies: [freshPolicy()], seeds: [] });
+    const created = store.createClaim(draft("80.00"), "Amira Shah");
+    expect(created.decision).toBe("PENDING");
+    expect(store.getClaim(created.id)?.history).toEqual([
+      {
+        at: created.createdAt,
+        actor: "Amira Shah",
+        action: "SUBMITTED",
+        fromDecision: null,
+        toDecision: "PENDING",
+        note: null,
+      },
+    ]);
+  });
+
+  it("returns lists and new claims without history, and one claim with it", () => {
+    const store = createStore({ clock });
+    for (const claim of store.listClaims()) {
+      expect(claim).not.toHaveProperty("history");
+    }
+    expect(store.createClaim(draft("1.00"), "Rae Quinn")).not.toHaveProperty("history");
+    expect(store.getClaim(LUIS)?.history.length).toBeGreaterThan(0);
+  });
+
+  it("seeds a denial, an info request, an approval, and leaves Amira pending", () => {
+    const store = createStore({ clock });
+    const decisions = Object.fromEntries(
+      store.listClaims().map((claim) => [claim.id, claim.decision]),
+    );
+    expect(decisions).toEqual({
+      "c4444444-4444-4444-8444-444444444444": "DENIED",
+      [LUIS]: "INFO_REQUESTED",
+      "c5555555-5555-4555-8555-555555555555": "APPROVED",
+      "c1111111-1111-4111-8111-111111111111": "PENDING",
+      "c2222222-2222-4222-8222-222222222222": "PENDING",
+    });
+
+    const nora = store.getClaim("c4444444-4444-4444-8444-444444444444");
+    expect(nora?.history.map((entry) => [entry.action, entry.actor])).toEqual([
+      ["SUBMITTED", "Nora Blake"],
+      ["DECIDED", "Dana Wells"],
+    ]);
+    expect(nora?.history.at(-1)?.note).toBe(
+      "The policy expired before the incident date.",
+    );
+
+    const luis = store.getClaim(LUIS);
+    expect(luis?.history.at(-1)).toMatchObject({
+      actor: "Dana Wells",
+      fromDecision: "PENDING",
+      toDecision: "INFO_REQUESTED",
+      note: "Please upload the medical bill for the clinic visit.",
+    });
+    expect(store.listComments(LUIS)).toEqual([
+      expect.objectContaining({
+        author: "Dana Wells",
+        role: "ADJUSTER",
+        body: "Please upload the medical bill for the clinic visit.",
+      }),
+    ]);
+
+    const chris = store.getClaim("c5555555-5555-4555-8555-555555555555");
+    expect(chris?.history.at(-1)).toMatchObject({
+      actor: "Dana Wells",
+      toDecision: "APPROVED",
+      note: null,
+    });
+  });
+
+  it("records a decision, keeps history oldest first, and refuses a final change", () => {
+    const store = createStore({ clock });
+    const approved = store.decideClaim(
+      LUIS,
+      { decision: "APPROVED", note: null },
+      "Dana Wells",
+    );
+    expect(approved?.ok).toBe(true);
+    const after = store.getClaim(LUIS);
+    expect(after?.decision).toBe("APPROVED");
+    expect(after?.history.map((entry) => entry.toDecision)).toEqual([
+      "PENDING",
+      "INFO_REQUESTED",
+      "APPROVED",
+    ]);
+    expect(store.listClaims().find((claim) => claim.id === LUIS)?.decision).toBe(
+      "APPROVED",
+    );
+
+    expect(
+      store.decideClaim(LUIS, { decision: "DENIED", note: "Too late." }, "Dana Wells"),
+    ).toEqual({ ok: false, reason: "final" });
+    expect(store.getClaim(LUIS)?.history).toHaveLength(3);
+  });
+
+  it("returns undefined when deciding an unknown claim", () => {
+    const store = createStore({ clock });
+    expect(
+      store.decideClaim("missing", { decision: "APPROVED", note: null }, "Dana Wells"),
+    ).toBeUndefined();
+  });
+
+  it("does not let callers change stored history", () => {
+    const store = createStore({ clock });
+    store.getClaim(LUIS)?.history.pop();
+    expect(store.getClaim(LUIS)?.history).toHaveLength(2);
+  });
+});
+
+describe("comments", () => {
+  it("stores comments per claim oldest first", () => {
+    const store = createStore({ clock, policies: [freshPolicy()], seeds: [] });
+    const first = store.createClaim(draft("80.00"), "Rae Quinn");
+    const second = store.createClaim(draft("90.00"), "Rae Quinn");
+    expect(store.listComments(first.id)).toEqual([]);
+
+    const posted = store.addComment(first.id, {
+      author: "Rae Quinn",
+      role: "CLAIMANT",
+      body: "Photos attached.",
+    });
+    store.addComment(first.id, {
+      author: "Dana Wells",
+      role: "ADJUSTER",
+      body: "Thanks.",
+    });
+
+    expect(posted).toMatchObject({
+      author: "Rae Quinn",
+      role: "CLAIMANT",
+      body: "Photos attached.",
+    });
+    expect(posted?.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(store.listComments(first.id).map((comment) => comment.body)).toEqual([
+      "Photos attached.",
+      "Thanks.",
+    ]);
+    expect(store.listComments(second.id)).toEqual([]);
+  });
+
+  it("returns undefined for an unknown claim", () => {
+    const store = createStore({ clock, seeds: [] });
+    expect(
+      store.addComment("missing", { author: "A", role: "CLAIMANT", body: "Hi" }),
+    ).toBeUndefined();
+    expect(store.listComments("missing")).toEqual([]);
+  });
+});

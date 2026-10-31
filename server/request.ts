@@ -1,5 +1,9 @@
+import type { DecisionChoice } from "../src/api/types";
+import { MAX_COMMENT_LENGTH } from "../src/domain/comments";
 import { isIsoDate } from "../src/domain/dates";
+import { DECISION_ACTIONS, noteRequired } from "../src/domain/decision";
 import { parseAmount } from "../src/domain/money";
+import type { DecisionInput } from "./decision";
 import type { NewClaim } from "./evaluate";
 
 export type ParseResult =
@@ -59,6 +63,59 @@ export function parseCreateClaim(body: unknown): ParseResult {
       documentNames: record.documentNames,
     },
   };
+}
+
+export type DecisionParseResult =
+  { ok: true; request: DecisionInput } | { ok: false; message: string };
+
+export type CommentParseResult =
+  { ok: true; body: string } | { ok: false; message: string };
+
+const DECISION_CHOICES: readonly DecisionChoice[] = DECISION_ACTIONS.map(
+  (action) => action.decision,
+);
+
+export function parseDecisionRequest(body: unknown): DecisionParseResult {
+  if (!isRecord(body)) {
+    return { ok: false, message: "Request body must be a JSON object." };
+  }
+  const decision = DECISION_CHOICES.find((choice) => choice === body.decision);
+  if (decision === undefined) {
+    return {
+      ok: false,
+      message: "Decision must be APPROVED, DENIED, or INFO_REQUESTED.",
+    };
+  }
+  const rawNote = body.note;
+  if (rawNote !== undefined && typeof rawNote !== "string") {
+    return { ok: false, message: "Note must be a string." };
+  }
+  const note = rawNote?.trim() ?? "";
+  if (note === "" && noteRequired(decision)) {
+    return { ok: false, message: "A note is required for this decision." };
+  }
+  return { ok: true, request: { decision, note: note === "" ? null : note } };
+}
+
+export function parseCommentRequest(body: unknown): CommentParseResult {
+  if (!isRecord(body)) {
+    return { ok: false, message: "Request body must be a JSON object." };
+  }
+  if (typeof body.body !== "string" || body.body.trim() === "") {
+    return { ok: false, message: "Comment body is required." };
+  }
+  const text = body.body.trim();
+  if (text.length > MAX_COMMENT_LENGTH) {
+    return {
+      ok: false,
+      message: `Comment body must be at most ${MAX_COMMENT_LENGTH} characters.`,
+    };
+  }
+  return { ok: true, body: text };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function isStringList(value: unknown): value is string[] {

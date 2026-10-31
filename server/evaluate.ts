@@ -131,6 +131,7 @@ export function adjudicate(
     documentNames: [...draft.documentNames],
     status: statusFrom(findings),
     findings,
+    decision: "PENDING",
     createdAt: identity.createdAt,
   };
 }

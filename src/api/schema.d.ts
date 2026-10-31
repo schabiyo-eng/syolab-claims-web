@@ -122,6 +122,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/claims/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record an adjuster decision on a claim
+         * @description Adjusters only. A claimant gets 403 before the claim or body is checked. A note is required for DENIED and INFO_REQUESTED and optional for APPROVED. APPROVED and DENIED are final, so a later decision returns 409. INFO_REQUESTED is not final and can move to APPROVED, DENIED, or INFO_REQUESTED again.
+         */
+        post: operations["decideClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/claims/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List comments on a claim oldest first
+         * @description Scoped to the caller. Claimants can read comments only on claims on their own policies. Adjusters can read comments on any claim. A claim outside the caller's scope returns 404, the same as a missing one.
+         */
+        get: operations["listComments"];
+        put?: never;
+        /**
+         * Add a comment to a claim
+         * @description Scoped to the caller. Claimants can comment only on claims on their own policies. Adjusters can comment on any claim. A claim outside the caller's scope returns 404, the same as a missing one. The author and role come from the bearer token.
+         */
+        post: operations["addComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -176,6 +220,7 @@ export interface components {
             description: string;
             documentNames: string[];
         };
+        /** @description ClaimDetail extends this schema with history, so it allows extra properties. */
         Claim: {
             /** Format: uuid */
             id: string;
@@ -189,8 +234,54 @@ export interface components {
             /** @enum {string} */
             status: "ACCEPTED" | "FLAGGED" | "REJECTED";
             findings: components["schemas"]["ValidationFinding"][];
+            decision: components["schemas"]["Decision"];
             /** Format: date-time */
             createdAt: string;
+        };
+        /**
+         * @description The adjuster decision, separate from the validation status. APPROVED and DENIED are final.
+         * @enum {string}
+         */
+        Decision: "PENDING" | "APPROVED" | "DENIED" | "INFO_REQUESTED";
+        /**
+         * @description A decision an adjuster can record. PENDING is only the starting state.
+         * @enum {string}
+         */
+        DecisionChoice: "APPROVED" | "DENIED" | "INFO_REQUESTED";
+        DecisionRequest: {
+            decision: components["schemas"]["DecisionChoice"];
+            /** @description Required and non-blank for DENIED and INFO_REQUESTED. Optional for APPROVED. */
+            note?: string;
+        };
+        HistoryEntry: {
+            /** Format: date-time */
+            at: string;
+            /** @description Display name of the user who acted */
+            actor: string;
+            /** @enum {string} */
+            action: "SUBMITTED" | "DECIDED";
+            /** @description Null for SUBMITTED */
+            fromDecision: components["schemas"]["Decision"] | null;
+            toDecision: components["schemas"]["Decision"];
+            note: string | null;
+        };
+        ClaimDetail: components["schemas"]["Claim"] & {
+            /** @description Ordered oldest first */
+            history: components["schemas"]["HistoryEntry"][];
+        };
+        Comment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            at: string;
+            /** @description Display name of the user who wrote the comment */
+            author: string;
+            role: components["schemas"]["Role"];
+            body: string;
+        };
+        CommentRequest: {
+            /** @description Non-blank after trimming, at most 2000 characters */
+            body: string;
         };
         ValidationFinding: {
             /** @enum {string} */
@@ -224,6 +315,24 @@ export interface components {
         };
         /** @description Missing, unknown, or expired bearer token */
         Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorMessage"];
+            };
+        };
+        /** @description The caller's role may not perform this action */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorMessage"];
+            };
+        };
+        /** @description The request conflicts with the resource's current state */
+        Conflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -401,15 +510,99 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The claim */
+            /** @description The claim with its decision history */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Claim"];
+                    "application/json": components["schemas"]["ClaimDetail"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    decideClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated claim with a new DECIDED history entry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listComments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Comments ordered by at ascending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    addComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentRequest"];
+            };
+        };
+        responses: {
+            /** @description Comment stored */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
         };

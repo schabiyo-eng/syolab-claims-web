@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCreateClaim } from "./request";
+import { parseCommentRequest, parseCreateClaim, parseDecisionRequest } from "./request";
 
 const valid = {
   policyNumber: "POL-1002",
@@ -27,5 +27,61 @@ describe("parseCreateClaim", () => {
     expect(parseCreateClaim({ ...valid, amount: "10.999" }).ok).toBe(false);
     expect(parseCreateClaim({ ...valid, amount: 100 }).ok).toBe(false);
     expect(parseCreateClaim({ ...valid, incidentDate: "2026-02-31" }).ok).toBe(false);
+  });
+});
+
+describe("parseDecisionRequest", () => {
+  it("accepts approve with or without a note and trims the note", () => {
+    expect(parseDecisionRequest({ decision: "APPROVED" })).toEqual({
+      ok: true,
+      request: { decision: "APPROVED", note: null },
+    });
+    expect(parseDecisionRequest({ decision: "APPROVED", note: "  " })).toEqual({
+      ok: true,
+      request: { decision: "APPROVED", note: null },
+    });
+    expect(parseDecisionRequest({ decision: "DENIED", note: " Expired. " })).toEqual({
+      ok: true,
+      request: { decision: "DENIED", note: "Expired." },
+    });
+    expect(
+      parseDecisionRequest({ decision: "INFO_REQUESTED", note: "Send the bill." }).ok,
+    ).toBe(true);
+  });
+
+  it("requires a non-blank note for deny and request info", () => {
+    for (const decision of ["DENIED", "INFO_REQUESTED"]) {
+      expect(parseDecisionRequest({ decision }).ok).toBe(false);
+      expect(parseDecisionRequest({ decision, note: "" }).ok).toBe(false);
+      expect(parseDecisionRequest({ decision, note: "   " }).ok).toBe(false);
+    }
+  });
+
+  it("rejects pending, an unknown decision, a bad note, and a non-object body", () => {
+    expect(parseDecisionRequest({ decision: "PENDING" }).ok).toBe(false);
+    expect(parseDecisionRequest({ decision: "approved" }).ok).toBe(false);
+    expect(parseDecisionRequest({}).ok).toBe(false);
+    expect(parseDecisionRequest({ decision: "APPROVED", note: 5 }).ok).toBe(false);
+    expect(parseDecisionRequest(null).ok).toBe(false);
+    expect(parseDecisionRequest([]).ok).toBe(false);
+  });
+});
+
+describe("parseCommentRequest", () => {
+  it("accepts a body and trims it", () => {
+    expect(parseCommentRequest({ body: "  I have uploaded the bill. " })).toEqual({
+      ok: true,
+      body: "I have uploaded the bill.",
+    });
+    expect(parseCommentRequest({ body: "x".repeat(2000) }).ok).toBe(true);
+  });
+
+  it("rejects a missing, blank, non-string, or too-long body", () => {
+    expect(parseCommentRequest({}).ok).toBe(false);
+    expect(parseCommentRequest({ body: "" }).ok).toBe(false);
+    expect(parseCommentRequest({ body: "  \n " }).ok).toBe(false);
+    expect(parseCommentRequest({ body: 12 }).ok).toBe(false);
+    expect(parseCommentRequest({ body: "x".repeat(2001) }).ok).toBe(false);
+    expect(parseCommentRequest("hello").ok).toBe(false);
   });
 });
