@@ -1,5 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { ADJUSTER, CLAIMANT, signIn } from "./signIn";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { ADJUSTER, CLAIMANT, signIn, type DemoAccount } from "./signIn";
 
 const AMIRA_CLAIM = "c1111111-1111-4111-8111-111111111111";
 const LUIS_CLAIM = "c3333333-3333-4333-8333-333333333333";
@@ -19,7 +19,7 @@ test("a claimant sees only their own claims and policies", async ({ page }) => {
   await expect(items.first()).toBeVisible();
   for (const text of await items.allTextContents()) {
     expect(text).toContain("POL-1001");
-    for (const other of ["POL-1002", "POL-1003", "POL-1004"]) {
+    for (const other of ["POL-1002", "POL-1003", "POL-1004", "POL-1005"]) {
       expect(text).not.toContain(other);
     }
   }
@@ -34,13 +34,20 @@ test("a claimant sees only their own claims and policies", async ({ page }) => {
   ).toEqual(["POL-1001"]);
 });
 
-test("the API hides records outside a claimant's policies", async ({ request }) => {
+async function authHeaders(
+  request: APIRequestContext,
+  account: DemoAccount,
+): Promise<Record<string, string>> {
   const login = await request.post("/api/auth/login", {
-    data: { username: CLAIMANT.username, password: CLAIMANT.password },
+    data: { username: account.username, password: account.password },
   });
   expect(login.status()).toBe(200);
   const { token } = (await login.json()) as { token: string };
-  const headers = { Authorization: `Bearer ${token}` };
+  return { Authorization: `Bearer ${token}` };
+}
+
+test("the API hides records outside a claimant's policies", async ({ request }) => {
+  const headers = await authHeaders(request, CLAIMANT);
 
   expect((await request.get(`/api/claims/${LUIS_CLAIM}`, { headers })).status()).toBe(
     404,
@@ -64,6 +71,21 @@ test("the API hides records outside a claimant's policies", async ({ request }) 
   expect(created.status()).toBe(404);
 });
 
+test("the API refuses a claim submitted by an adjuster", async ({ request }) => {
+  const created = await request.post("/api/claims", {
+    headers: await authHeaders(request, ADJUSTER),
+    data: {
+      policyNumber: "POL-1002",
+      claimantName: "Luis Ortega",
+      amount: "50.00",
+      incidentDate: "2026-06-01",
+      description: "Adjuster submission attempt",
+      documentNames: ["medical-bill"],
+    },
+  });
+  expect(created.status()).toBe(403);
+});
+
 test("an adjuster filters the claims queue", async ({ page }) => {
   await page.goto("/");
   await signIn(page, ADJUSTER);
@@ -76,7 +98,7 @@ test("an adjuster filters the claims queue", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Submit claim" })).toHaveCount(0);
 
   const items = claimItems(page, "Claims queue");
-  for (const policy of ["POL-1001", "POL-1002", "POL-1003", "POL-1004"]) {
+  for (const policy of ["POL-1001", "POL-1002", "POL-1003", "POL-1004", "POL-1005"]) {
     await expect(items.filter({ hasText: policy }).first()).toBeVisible();
   }
 
@@ -106,4 +128,9 @@ test("an adjuster filters the claims queue", async ({ page }) => {
   await search.fill("POL-1004");
   await expect(items.first()).toContainText("Chris Dalton");
   await expect(items.filter({ hasNotText: "Chris Dalton" })).toHaveCount(0);
+
+  await search.fill("POL-1005");
+  await expect(items).toHaveCount(1);
+  await expect(items.first()).toContainText("Grace Okafor");
+  await expect(items.first()).toContainText("Accepted");
 });

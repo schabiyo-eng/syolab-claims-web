@@ -9,6 +9,7 @@ const HOST = "127.0.0.1";
 const PORT = Number(process.env.STUB_PORT ?? 8080);
 const store = createStore({ clock: systemClock() });
 const auth = createAuth();
+const ROLE_FORBIDDEN = { message: "Your role is not allowed to do this." };
 
 function applyCors(request: IncomingMessage, response: ServerResponse): void {
   const origin = request.headers.origin;
@@ -136,6 +137,10 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (method === "POST" && path === "/api/claims") {
+      if (principal.user.role !== "CLAIMANT") {
+        sendJson(response, 403, ROLE_FORBIDDEN);
+        return;
+      }
       const raw = await readBody(request);
       let parsed: unknown;
       try {
@@ -169,7 +174,7 @@ const server = createServer(async (request, response) => {
     const decisionMatch = /^\/api\/claims\/([^/]+)\/decision$/.exec(path);
     if (method === "POST" && decisionMatch?.[1]) {
       if (principal.user.role !== "ADJUSTER") {
-        sendJson(response, 403, { message: "Only adjusters can decide claims." });
+        sendJson(response, 403, ROLE_FORBIDDEN);
         return;
       }
       const id = decodeURIComponent(decisionMatch[1]);

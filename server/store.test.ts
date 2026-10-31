@@ -69,6 +69,41 @@ describe("seeded desk", () => {
     expect(nora?.findings.map((finding) => finding.code)).toEqual(["POLICY_INACTIVE"]);
   });
 
+  it("accepts Grace Okafor's kitchen claim with no findings", () => {
+    const grace = store().getClaim("c6666666-6666-4666-8666-666666666666");
+    expect(grace).toMatchObject({
+      policyNumber: "POL-1005",
+      claimantName: "Grace Okafor",
+      amount: "1250.00",
+      incidentDate: "2026-04-18",
+      description: "Kitchen pipe leak",
+      documentNames: ["contractor-estimate"],
+      createdAt: "2026-04-18T15:00:00Z",
+      status: "ACCEPTED",
+      findings: [],
+    });
+    expect(store().getPolicy("POL-1005")).toEqual({
+      policyNumber: "POL-1005",
+      holderName: "Grace Okafor",
+      status: "ACTIVE",
+      coverageLimit: "15000.00",
+      effectiveDate: "2025-01-01",
+      expirationDate: "2027-12-31",
+      requiredDocuments: ["contractor-estimate"],
+    });
+  });
+
+  it("seeds no decisions or comments", () => {
+    const seeded = store();
+    const claims = seeded.listClaims();
+    expect(claims).toHaveLength(6);
+    for (const claim of claims) {
+      expect(claim.decision).toBe("PENDING");
+      expect(claim.history).toEqual([]);
+      expect(seeded.listComments(claim.id)).toEqual([]);
+    }
+  });
+
   it("lists claims newest first", () => {
     expect(
       store()
@@ -76,6 +111,7 @@ describe("seeded desk", () => {
         .map((claim) => claim.claimantName),
     ).toEqual([
       "Nora Blake",
+      "Grace Okafor",
       "Luis Ortega",
       "Amira Shah",
       "Amira Shah",
@@ -181,6 +217,8 @@ describe("coverage rules", () => {
 
 describe("decisions and history", () => {
   const LUIS = "c3333333-3333-4333-8333-333333333333";
+  const NORA = "c4444444-4444-4444-8444-444444444444";
+  const INFO_NOTE = "Please upload the medical bill for the clinic visit.";
 
   it("starts a new claim pending with an empty history", () => {
     const store = createStore({ clock, policies: [freshPolicy()], seeds: [] });
@@ -199,75 +237,53 @@ describe("decisions and history", () => {
       store.getClaim(LUIS)?.history,
     );
     expect(store.createClaim(draft("1.00")).history).toEqual([]);
+
+    store.decideClaim(LUIS, { decision: "INFO_REQUESTED", note: INFO_NOTE }, "dana");
     expect(store.getClaim(LUIS)?.history.length).toBeGreaterThan(0);
+    expect(store.listClaims().find((claim) => claim.id === LUIS)?.history).toEqual(
+      store.getClaim(LUIS)?.history,
+    );
   });
 
-  it("seeds a denial, an info request, an approval, and leaves Amira pending", () => {
+  it("records a denial with its actor and note", () => {
     const store = createStore({ clock });
-    const decisions = Object.fromEntries(
-      store.listClaims().map((claim) => [claim.id, claim.decision]),
+    const result = store.decideClaim(
+      NORA,
+      { decision: "DENIED", note: "The policy expired before the incident date." },
+      "dana",
     );
-    expect(decisions).toEqual({
-      "c4444444-4444-4444-8444-444444444444": "DENIED",
-      [LUIS]: "INFO_REQUESTED",
-      "c5555555-5555-4555-8555-555555555555": "APPROVED",
-      "c1111111-1111-4111-8111-111111111111": "PENDING",
-      "c2222222-2222-4222-8222-222222222222": "PENDING",
-    });
-
-    const nora = store.getClaim("c4444444-4444-4444-8444-444444444444");
+    expect(result?.ok).toBe(true);
+    const nora = store.getClaim(NORA);
+    expect(nora?.decision).toBe("DENIED");
     expect(
       nora?.history.map((entry) => [
         entry.action,
         entry.actor,
         entry.fromDecision,
         entry.toDecision,
+        entry.note,
       ]),
-    ).toEqual([["DECIDED", "dana.wells", "PENDING", "DENIED"]]);
-    expect(nora?.history.at(-1)?.note).toBe(
-      "The policy expired before the incident date.",
-    );
-
-    const luis = store.getClaim(LUIS);
-    expect(luis?.history).toHaveLength(1);
-    expect(luis?.history.at(-1)).toMatchObject({
-      actor: "dana.wells",
-      fromDecision: "PENDING",
-      toDecision: "INFO_REQUESTED",
-      note: "Please upload the medical bill for the clinic visit.",
-    });
-    expect(store.listComments(LUIS)).toEqual([
-      expect.objectContaining({
-        author: "dana.wells",
-        role: "ADJUSTER",
-        body: "Please upload the medical bill for the clinic visit.",
-      }),
+    ).toEqual([
+      [
+        "DECIDED",
+        "dana",
+        "PENDING",
+        "DENIED",
+        "The policy expired before the incident date.",
+      ],
     ]);
-
-    const chris = store.getClaim("c5555555-5555-4555-8555-555555555555");
-    expect(chris?.history).toEqual([
-      expect.objectContaining({
-        actor: "dana.wells",
-        fromDecision: "PENDING",
-        toDecision: "APPROVED",
-        note: null,
-      }),
-    ]);
-
-    for (const amira of [
-      "c1111111-1111-4111-8111-111111111111",
-      "c2222222-2222-4222-8222-222222222222",
-    ]) {
-      expect(store.getClaim(amira)?.history).toEqual([]);
-    }
   });
 
   it("records a decision, keeps history oldest first, and refuses a final change", () => {
     const store = createStore({ clock });
+    expect(
+      store.decideClaim(LUIS, { decision: "INFO_REQUESTED", note: INFO_NOTE }, "dana")
+        ?.ok,
+    ).toBe(true);
     const approved = store.decideClaim(
       LUIS,
       { decision: "APPROVED", note: null },
-      "dana.wells",
+      "dana",
     );
     expect(approved?.ok).toBe(true);
     const after = store.getClaim(LUIS);
@@ -283,7 +299,7 @@ describe("decisions and history", () => {
     );
 
     expect(
-      store.decideClaim(LUIS, { decision: "DENIED", note: "Too late." }, "dana.wells"),
+      store.decideClaim(LUIS, { decision: "DENIED", note: "Too late." }, "dana"),
     ).toEqual({ ok: false, reason: "final" });
     expect(store.getClaim(LUIS)?.history).toHaveLength(2);
   });
@@ -291,12 +307,13 @@ describe("decisions and history", () => {
   it("returns undefined when deciding an unknown claim", () => {
     const store = createStore({ clock });
     expect(
-      store.decideClaim("missing", { decision: "APPROVED", note: null }, "dana.wells"),
+      store.decideClaim("missing", { decision: "APPROVED", note: null }, "dana"),
     ).toBeUndefined();
   });
 
   it("does not let callers change stored history", () => {
     const store = createStore({ clock });
+    store.decideClaim(LUIS, { decision: "INFO_REQUESTED", note: INFO_NOTE }, "dana");
     store.getClaim(LUIS)?.history.pop();
     store
       .listClaims()
@@ -319,7 +336,7 @@ describe("comments", () => {
       body: "Photos attached.",
     });
     store.addComment(first.id, {
-      author: "dana.wells",
+      author: "dana",
       role: "ADJUSTER",
       body: "Thanks.",
     });

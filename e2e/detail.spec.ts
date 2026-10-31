@@ -38,6 +38,38 @@ async function createAmiraClaim(
   return ((await created.json()) as { id: string }).id;
 }
 
+async function createLuisClaimAwaitingInfo(
+  request: APIRequestContext,
+  description: string,
+): Promise<string> {
+  const created = await request.post(`${STUB}/api/claims`, {
+    headers: await tokenFor(request, CLAIMANT_LUIS),
+    data: {
+      policyNumber: "POL-1002",
+      claimantName: CLAIMANT_LUIS.displayName,
+      amount: "80.00",
+      incidentDate: "2026-06-01",
+      description,
+      documentNames: [],
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = (await created.json()) as { id: string };
+
+  const dana = await tokenFor(request, ADJUSTER);
+  const decided = await request.post(`${STUB}/api/claims/${id}/decision`, {
+    headers: dana,
+    data: { decision: "INFO_REQUESTED", note: INFO_REQUEST },
+  });
+  expect(decided.status()).toBe(200);
+  const commented = await request.post(`${STUB}/api/claims/${id}/comments`, {
+    headers: dana,
+    data: { body: INFO_REQUEST },
+  });
+  expect(commented.status()).toBe(201);
+  return id;
+}
+
 function uniqueDescription(label: string): string {
   return `${label} ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
@@ -48,18 +80,22 @@ function panel(page: Page, name: string) {
 
 test("a claimant opens an info request, replies, and keeps the reply after reload", async ({
   page,
+  request,
 }) => {
+  const description = uniqueDescription("Info request walkthrough");
+  const id = await createLuisClaimAwaitingInfo(request, description);
+
   await page.goto("/");
   await signIn(page, CLAIMANT_LUIS);
 
   const row = page
     .getByRole("region", { name: "My claims" })
     .getByRole("listitem")
-    .filter({ hasText: "Clinic visit" });
+    .filter({ hasText: description });
   await expect(row).toContainText("Info requested");
 
   await row.getByRole("link", { name: CLAIMANT_LUIS.displayName }).click();
-  await expect(page).toHaveURL(`/claims/${LUIS_CLAIM}`);
+  await expect(page).toHaveURL(`/claims/${id}`);
 
   await expect(
     page.getByText(
@@ -89,7 +125,7 @@ test("a claimant opens an info request, replies, and keeps the reply after reloa
   await expect(page.getByLabel("Add a comment")).toHaveValue("");
 
   await page.reload();
-  await expect(page).toHaveURL(`/claims/${LUIS_CLAIM}`);
+  await expect(page).toHaveURL(`/claims/${id}`);
   await expect(comments.getByRole("listitem").filter({ hasText: reply })).toHaveCount(
     1,
   );

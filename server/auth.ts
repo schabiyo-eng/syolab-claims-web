@@ -19,24 +19,24 @@ export interface Principal {
 
 export const demoUsers: readonly DemoUser[] = [
   {
-    username: "amira.shah",
-    password: "claimant-demo",
+    username: "amira",
+    password: "amira-demo",
     role: "CLAIMANT",
     displayName: "Amira Shah",
     policyNumbers: ["POL-1001"],
   },
   {
-    username: "luis.ortega",
-    password: "claimant-demo",
+    username: "luis",
+    password: "luis-demo",
     role: "CLAIMANT",
     displayName: "Luis Ortega",
     policyNumbers: ["POL-1002"],
   },
   {
-    username: "dana.wells",
-    password: "adjuster-demo",
+    username: "dana",
+    password: "dana-demo",
     role: "ADJUSTER",
-    displayName: "Dana Wells",
+    displayName: "Dana Whitfield",
   },
 ];
 
