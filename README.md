@@ -38,10 +38,13 @@ The stub listens on `http://127.0.0.1:8080`. In another terminal, run `npm run d
 
 Sign in with one of the stub's demo logins:
 
-| Username     | Password        | Role     | Display name |
-| ------------ | --------------- | -------- | ------------ |
-| `amira.shah` | `claimant-demo` | Claimant | Amira Shah   |
-| `dana.wells` | `adjuster-demo` | Adjuster | Dana Wells   |
+| Username      | Password        | Role     | Display name | Policies |
+| ------------- | --------------- | -------- | ------------ | -------- |
+| `amira.shah`  | `claimant-demo` | Claimant | Amira Shah   | POL-1001 |
+| `luis.ortega` | `claimant-demo` | Claimant | Luis Ortega  | POL-1002 |
+| `dana.wells`  | `adjuster-demo` | Adjuster | Dana Wells   | All      |
+
+Claimants see My claims and file claims only on their own policies. Adjusters see the claims queue for every policy, with a status filter and a search by claimant or policy. The API scopes every list and lookup to the caller: a policy or claim outside a claimant's scope returns 404, the same as one that does not exist.
 
 `POST /api/auth/login` returns a token. Every other `/api` call needs it in an `Authorization: Bearer <token>` header and gets a 401 without it. The app keeps the token in session storage, so it lasts until the tab closes or you log out.
 
@@ -63,7 +66,7 @@ Commit the generated `src/api/schema.d.ts`. `npm run check:api` regenerates it a
 
 ## Browser smoke
 
-`npm run e2e` starts the stub and the Vite dev server, then runs the Playwright smoke in Chromium. The smoke signs in as `amira.shah`, sees Amira Shah, and submits a `100.00` claim on `POL-1002`.
+`npm run e2e` starts the stub and the Vite dev server, then runs the Playwright smoke in Chromium. The smoke signs in as `luis.ortega`, sees Luis Ortega, and submits a `100.00` claim on `POL-1002`. Other specs cover sign-in, the claimant and adjuster views, and the API scoping.
 
 ## Browser smoke against the Spring API
 

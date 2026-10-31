@@ -292,6 +292,51 @@ button[type="submit"]:disabled {
   margin: 0.2rem 0 0;
 }
 
+.queue {
+  grid-column: 1 / -1;
+}
+
+.queue-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.8rem 1.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.queue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.queue-filter {
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  background: #fff;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  cursor: pointer;
+}
+
+.queue-filter[aria-pressed="true"] {
+  background: var(--accent);
+  color: white;
+}
+
+.queue-search {
+  flex: 1 1 18rem;
+  max-width: 26rem;
+}
+
+.queue-count {
+  margin-bottom: 0.6rem;
+  color: var(--muted);
+}
+
 .claim-list {
   list-style: none;
   margin: 0;
