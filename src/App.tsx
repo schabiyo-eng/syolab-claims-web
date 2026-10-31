@@ -1,233 +1,125 @@
-import { useEffect, useState } from "react";
-import { createClaim, listClaims, listPolicies } from "./api/client";
-import type { Claim, Policy } from "./api/types";
-import { ClaimForm } from "./components/ClaimForm";
-import { ClaimsList } from "./components/ClaimsList";
-import { newestFirst } from "./domain/claims";
+import { useEffect, useState, type ReactNode } from "react";
 import {
-  firstInvalidField,
-  hasFieldErrors,
-  validateClaimForm,
-  type ClaimFormValues,
-  type FieldErrors,
-  type FieldName,
-} from "./domain/validation";
+  ApiError,
+  currentUser,
+  hasSession,
+  logout,
+  onUnauthorized,
+} from "./api/client";
+import type { CurrentUser } from "./api/types";
+import { ClaimsDesk } from "./components/ClaimsDesk";
+import { SignIn } from "./components/SignIn";
+import { roleLabel } from "./domain/roles";
 
-type LoadState<T> =
-  { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: T };
+type AuthState =
+  | { kind: "restoring" }
+  | { kind: "signedOut"; notice: string | null }
+  | { kind: "signedIn"; user: CurrentUser };
 
-const EMPTY_FORM: ClaimFormValues = {
-  policyNumber: "",
-  claimantName: "",
-  amount: "",
-  incidentDate: "",
-  description: "",
-};
+const SESSION_ENDED = "Your session has ended. Sign in again.";
+const RESTORE_FAILED = "Could not restore your session. Sign in again.";
 
-function messageOf(error: unknown): string {
-  if (error instanceof Error && error.message.trim() !== "") {
-    return error.message;
-  }
-  return "Something went wrong.";
+function initialAuth(): AuthState {
+  return hasSession() ? { kind: "restoring" } : { kind: "signedOut", notice: null };
 }
 
-export function App() {
-  const [policies, setPolicies] = useState<LoadState<Policy[]>>({ kind: "loading" });
-  const [claims, setClaims] = useState<LoadState<Claim[]>>({ kind: "loading" });
-  const [reloadToken, setReloadToken] = useState(0);
-  const [form, setForm] = useState<ClaimFormValues>(EMPTY_FORM);
-  const [documents, setDocuments] = useState<string[]>([]);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setPolicies({ kind: "loading" });
-    setClaims({ kind: "loading" });
-
-    void listPolicies()
-      .then((data) => {
-        if (!cancelled) {
-          setPolicies({ kind: "ready", data });
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setPolicies({ kind: "error", message: messageOf(error) });
-        }
-      });
-
-    void listClaims()
-      .then((data) => {
-        if (!cancelled) {
-          setClaims({ kind: "ready", data: newestFirst(data) });
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setClaims({ kind: "error", message: messageOf(error) });
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadToken]);
-
-  useEffect(() => {
-    if (policies.kind !== "ready" || form.policyNumber !== "") {
-      return;
-    }
-    const first = policies.data[0];
-    if (first) {
-      setForm((current) => ({ ...current, policyNumber: first.policyNumber }));
-    }
-  }, [policies, form.policyNumber]);
-
-  const selected =
-    policies.kind === "ready"
-      ? (policies.data.find((policy) => policy.policyNumber === form.policyNumber) ??
-        null)
-      : null;
-
-  function updateField(field: FieldName, value: string) {
-    setForm((current) => ({ ...current, [field]: value }));
-    setConfirmation(null);
-    if (field === "policyNumber") {
-      setDocuments([]);
-    }
-    setErrors((current) => {
-      if (current[field] === undefined) {
-        return current;
-      }
-      const next = { ...current };
-      delete next[field];
-      return next;
-    });
-  }
-
-  function toggleDocument(name: string) {
-    setDocuments((current) =>
-      current.includes(name)
-        ? current.filter((item) => item !== name)
-        : [...current, name],
-    );
-    setConfirmation(null);
-  }
-
-  async function refreshClaims() {
-    const data = await listClaims();
-    setClaims({ kind: "ready", data: newestFirst(data) });
-  }
-
-  async function submit() {
-    const nextErrors = validateClaimForm(form);
-    setErrors(nextErrors);
-    setSubmitError(null);
-    if (hasFieldErrors(nextErrors)) {
-      const field = firstInvalidField(nextErrors);
-      if (field) {
-        document.getElementById(field)?.focus();
-      }
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await createClaim({
-        policyNumber: form.policyNumber.trim(),
-        claimantName: form.claimantName.trim(),
-        amount: form.amount.trim(),
-        incidentDate: form.incidentDate,
-        description: form.description.trim(),
-        documentNames: documents,
-      });
-      await refreshClaims();
-      setForm((current) => ({
-        ...EMPTY_FORM,
-        policyNumber: current.policyNumber,
-      }));
-      setDocuments([]);
-      setConfirmation("Claim stored.");
-    } catch (error: unknown) {
-      setSubmitError(messageOf(error));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
+function Banner({ children }: { children?: ReactNode }) {
   return (
-    <>
-      <a className="skip" href="#claim-form">
-        Skip to claim form
-      </a>
-      <header className="banner">
+    <header className="banner">
+      <div>
         <p className="eyebrow">Syolab desk</p>
         <h1>Claims intake</h1>
         <p className="lede">
           Fictional claims desk. Submit a claim and read the validation status.
         </p>
-      </header>
-      <main className="layout">
-        <section className="panel" aria-labelledby="new-claim-heading">
-          <h2 id="new-claim-heading">New claim</h2>
-          {policies.kind === "loading" ? (
-            <p className="state">Loading policies…</p>
-          ) : null}
-          {policies.kind === "error" ? (
-            <div className="state">
-              <p className="alert" role="alert">
-                Could not load policies. {policies.message}
-              </p>
-              <button
-                type="button"
-                className="retry"
-                onClick={() => setReloadToken((n) => n + 1)}
-              >
-                Retry
-              </button>
-            </div>
-          ) : null}
-          {policies.kind === "ready" ? (
-            <ClaimForm
-              policies={policies.data}
-              policy={selected}
-              values={form}
-              documents={documents}
-              errors={errors}
-              submitting={submitting}
-              submitError={submitError}
-              confirmation={confirmation}
-              onChange={updateField}
-              onToggleDocument={toggleDocument}
-              onSubmit={() => {
-                void submit();
-              }}
-            />
-          ) : null}
-        </section>
-        <section className="panel" aria-labelledby="claims-heading">
-          <h2 id="claims-heading">Claims</h2>
-          {claims.kind === "loading" ? <p className="state">Loading claims…</p> : null}
-          {claims.kind === "error" ? (
-            <div className="state">
-              <p className="alert" role="alert">
-                Could not load claims. {claims.message}
-              </p>
-              <button
-                type="button"
-                className="retry"
-                onClick={() => setReloadToken((n) => n + 1)}
-              >
-                Retry
-              </button>
-            </div>
-          ) : null}
-          {claims.kind === "ready" ? <ClaimsList claims={claims.data} /> : null}
-        </section>
-      </main>
-    </>
+      </div>
+      {children}
+    </header>
   );
+}
+
+export function App() {
+  const [auth, setAuth] = useState<AuthState>(initialAuth);
+
+  useEffect(
+    () =>
+      onUnauthorized(() => {
+        setAuth({ kind: "signedOut", notice: SESSION_ENDED });
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    if (!hasSession()) {
+      return;
+    }
+    let cancelled = false;
+    void currentUser()
+      .then((user) => {
+        if (!cancelled) {
+          setAuth({ kind: "signedIn", user });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          const expired = error instanceof ApiError && error.statusCode === 401;
+          setAuth({
+            kind: "signedOut",
+            notice: expired ? SESSION_ENDED : RESTORE_FAILED,
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function signOut() {
+    logout();
+    setAuth({ kind: "signedOut", notice: null });
+  }
+
+  switch (auth.kind) {
+    case "restoring":
+      return (
+        <>
+          <Banner />
+          <main className="sign-in">
+            <p className="state" role="status">
+              Restoring your session…
+            </p>
+          </main>
+        </>
+      );
+    case "signedOut":
+      return (
+        <>
+          <Banner />
+          <SignIn
+            notice={auth.notice}
+            onSignedIn={(user) => setAuth({ kind: "signedIn", user })}
+          />
+        </>
+      );
+    case "signedIn":
+      return (
+        <>
+          <a className="skip" href="#claim-form">
+            Skip to claim form
+          </a>
+          <Banner>
+            <div className="session">
+              <p className="session-user">
+                <span className="session-name">{auth.user.displayName}</span>
+                <span className="session-role">{roleLabel(auth.user.role)}</span>
+              </p>
+              <button type="button" className="logout" onClick={signOut}>
+                Log out
+              </button>
+            </div>
+          </Banner>
+          <ClaimsDesk />
+        </>
+      );
+  }
 }

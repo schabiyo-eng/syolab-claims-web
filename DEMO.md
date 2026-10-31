@@ -45,7 +45,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. The dev server proxies `/api` to `http://localhost:8080`.
+Open `http://localhost:5173`. The dev server proxies `/api` to `http://localhost:8080`. Sign in as `amira.shah` with password `claimant-demo`.
 
 Before the exercise, show behavior the suite already locks in:
 

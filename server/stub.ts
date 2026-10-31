@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createAuth } from "./auth";
 import { systemClock } from "./clock";
 import { parseCreateClaim } from "./request";
 import { createStore } from "./store";
@@ -6,6 +7,7 @@ import { createStore } from "./store";
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.STUB_PORT ?? 8080);
 const store = createStore({ clock: systemClock() });
+const auth = createAuth();
 
 function applyCors(request: IncomingMessage, response: ServerResponse): void {
   const origin = request.headers.origin;
@@ -14,7 +16,7 @@ function applyCors(request: IncomingMessage, response: ServerResponse): void {
     response.setHeader("Vary", "Origin");
   }
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
@@ -57,6 +59,40 @@ const server = createServer(async (request, response) => {
   const path = url.pathname;
 
   try {
+    if (method === "POST" && path === "/api/auth/login") {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(await readBody(request)) as unknown;
+      } catch {
+        sendJson(response, 400, { message: "Request body must be JSON." });
+        return;
+      }
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        sendJson(response, 400, { message: "Request body must be a JSON object." });
+        return;
+      }
+      const { username, password } = parsed as Record<string, unknown>;
+      if (typeof username !== "string" || typeof password !== "string") {
+        sendJson(response, 400, { message: "Username and password are required." });
+        return;
+      }
+      const session = auth.login(username, password);
+      if (!session) {
+        sendJson(response, 401, { message: "Invalid username or password." });
+        return;
+      }
+      sendJson(response, 200, session);
+      return;
+    }
+    const user = auth.userForAuthorization(request.headers.authorization);
+    if (path.startsWith("/api/") && !user) {
+      sendJson(response, 401, { message: "Sign in to continue." });
+      return;
+    }
+    if (method === "GET" && path === "/api/auth/me") {
+      sendJson(response, 200, user);
+      return;
+    }
     if (method === "GET" && path === "/api/policies") {
       sendJson(response, 200, store.listPolicies());
       return;

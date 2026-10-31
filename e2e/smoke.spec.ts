@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { signIn } from "./signIn";
 
 test("loads the desk and accepts a small POL-1002 claim", async ({ page }) => {
   await page.goto("/");
+  await signIn(page);
   await expect(page.getByRole("heading", { name: "Claims intake" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Amira Shah" }).first()).toBeVisible();
 
