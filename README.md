@@ -2,6 +2,8 @@
 
 A single-page claims desk for the fictional Syolab insurance demo. It loads policies, submits a claim, and lists the validation status returned by the claims API.
 
+T-E94514 is now fixed!!!
+
 The API contract is `openapi/claims-api.yaml`. TypeScript types are generated from that file. The dev server proxies `/api` to `http://localhost:8080`.
 
 Presenter notes are in [DEMO.md](DEMO.md).
