@@ -280,7 +280,7 @@ components:
       properties:
         username:
           type: string
-          example: amira.shah
+          example: dana
         password:
           type: string
           format: password

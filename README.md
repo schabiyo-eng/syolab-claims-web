@@ -36,17 +36,19 @@ npm run stub
 
 The stub listens on `http://127.0.0.1:8080`. In another terminal, run `npm run dev`.
 
-Sign in with one of the stub's demo logins:
+Sign in with one of the API's demo logins. The stub accepts the same ones:
 
-| Username      | Password        | Role     | Display name | Policies |
-| ------------- | --------------- | -------- | ------------ | -------- |
-| `amira.shah`  | `claimant-demo` | Claimant | Amira Shah   | POL-1001 |
-| `luis.ortega` | `claimant-demo` | Claimant | Luis Ortega  | POL-1002 |
-| `dana.wells`  | `adjuster-demo` | Adjuster | Dana Wells   | All      |
+| Username | Role     | Display name   | Policies |
+| -------- | -------- | -------------- | -------- |
+| `amira`  | Claimant | Amira Shah     | POL-1001 |
+| `luis`   | Claimant | Luis Ortega    | POL-1002 |
+| `dana`   | Adjuster | Dana Whitfield | All      |
 
-Claimants see My claims and file claims only on their own policies. Adjusters see the claims queue for every policy, with a status filter and a search by claimant or policy. The API scopes every list and lookup to the caller: a policy or claim outside a claimant's scope returns 404, the same as one that does not exist.
+The passwords are in the API repository's `auth/DemoUsers.java`; the stub's `server/auth.ts` mirrors them.
 
-Click a claimant name in My claims or the claims queue to open the claim detail page at `/claims/<id>`. It shows the claim fields, the validation status and findings, the adjuster decision, a timeline, and comments. Adjusters can Approve, Deny, or Request info. Deny and Request info need a note. Approved and Denied are final; Info requested is not, so the adjuster can decide again after the claimant replies in the comments. The timeline starts with the submission time, then lists each decision with the username of the adjuster who made it; comments also show the author's username. Every list row shows the decision next to the validation status. The stub seeds three decisions to show: Luis Ortega's clinic visit has an info request for the medical bill, Nora Blake's windshield claim is denied because the policy expired, and Chris Dalton's parking lot dent is approved.
+Claimants see My claims and file claims only on their own policies. Only claimants can submit a claim; an adjuster's `POST /api/claims` returns 403. Adjusters see the claims queue for every policy, with a status filter and a search by claimant or policy. The API scopes every list and lookup to the caller: a policy or claim outside a claimant's scope returns 404, the same as one that does not exist.
+
+Click a claimant name in My claims or the claims queue to open the claim detail page at `/claims/<id>`. It shows the claim fields, the validation status and findings, the adjuster decision, a timeline, and comments. Adjusters can Approve, Deny, or Request info. Deny and Request info need a note. Approved and Denied are final; Info requested is not, so the adjuster can decide again after the claimant replies in the comments. The timeline starts with the submission time, then lists each decision with the username of the adjuster who made it; comments also show the author's username. Every list row shows the decision next to the validation status. Like the API, the stub seeds six claims on `POL-1001` to `POL-1005` with no decisions and no comments, so every seeded claim starts Pending with an empty timeline. Make decisions live as the adjuster.
 
 `POST /api/auth/login` returns a token. Every other `/api` call needs it in an `Authorization: Bearer <token>` header and gets a 401 without it. The app keeps the token in session storage, so it lasts until the tab closes or you log out. The stub keeps tokens in memory, so restarting it signs everyone out.
 
@@ -68,7 +70,7 @@ Commit the generated `src/api/schema.d.ts`. `npm run check:api` regenerates it a
 
 ## Browser smoke
 
-`npm run e2e` starts the stub and the Vite dev server, then runs the Playwright smoke in Chromium. The smoke signs in as `luis.ortega`, sees Luis Ortega, and submits a `100.00` claim on `POL-1002`. Other specs cover sign-in, the claimant and adjuster views, and the API scoping.
+`npm run e2e` starts the stub and the Vite dev server, then runs the Playwright smoke in Chromium. The smoke signs in as `luis`, sees Luis Ortega, and submits a `100.00` claim on `POL-1002`. Other specs cover sign-in, the claimant and adjuster views, and the API scoping.
 
 ## Browser smoke against the Spring API
 
@@ -78,7 +80,7 @@ Start the API on port 8080 first (`./mvnw spring-boot:run` in the API repository
 npm run e2e:live
 ```
 
-That runs the same smoke through the Vite proxy against the already running API. It does not start the stub. The smoke submits a claim, so the API's in-memory data changes until that process restarts.
+That runs the same specs through the Vite proxy against the already running API. It does not start the stub. The specs submit claims, decisions, and comments, so the API's in-memory data grows until that process restarts. The API has no reset endpoint, so each spec creates the claims it decides on and never depends on seeded decisions or exact claim counts; repeat runs against the same API process pass.
 
 ## Production build
 

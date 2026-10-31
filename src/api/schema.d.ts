@@ -173,7 +173,7 @@ export interface components {
         /** @enum {string} */
         Role: "CLAIMANT" | "ADJUSTER";
         LoginRequest: {
-            /** @example amira.shah */
+            /** @example dana */
             username: string;
             /** Format: password */
             password: string;

@@ -52,12 +52,12 @@ async function signIn(token = "token-1"): Promise<void> {
   fetchMock.mockResolvedValueOnce(
     json(200, {
       token,
-      username: "amira.shah",
+      username: "amira",
       role: "CLAIMANT",
       displayName: "Amira Shah",
     }),
   );
-  await login("amira.shah", "claimant-demo");
+  await login("amira", "test-password");
 }
 
 describe("login", () => {
@@ -65,16 +65,16 @@ describe("login", () => {
     fetchMock.mockResolvedValueOnce(
       json(200, {
         token: "token-1",
-        username: "amira.shah",
+        username: "amira",
         role: "CLAIMANT",
         displayName: "Amira Shah",
       }),
     );
 
-    const user = await login("amira.shah", "claimant-demo");
+    const user = await login("amira", "test-password");
 
     expect(user).toEqual({
-      username: "amira.shah",
+      username: "amira",
       role: "CLAIMANT",
       displayName: "Amira Shah",
     });
@@ -82,8 +82,8 @@ describe("login", () => {
     expect(path).toBe("/api/auth/login");
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toEqual({
-      username: "amira.shah",
-      password: "claimant-demo",
+      username: "amira",
+      password: "test-password",
     });
     expect(authorizationOf(0)).toBeNull();
     expect(hasSession()).toBe(true);
@@ -98,7 +98,7 @@ describe("login", () => {
     const unsubscribe = onUnauthorized(listener);
     fetchMock.mockResolvedValueOnce(json(401, { message: "Server wording." }));
 
-    const failure = login("amira.shah", "wrong").catch((error: unknown) => error);
+    const failure = login("amira", "wrong").catch((error: unknown) => error);
 
     const error = await failure;
     expect(error).toBeInstanceOf(ApiError);
@@ -117,7 +117,7 @@ describe("login", () => {
     const unsubscribe = onUnauthorized(listener);
     fetchMock.mockResolvedValueOnce(json(401, { message: "Server wording." }));
 
-    await login("amira.shah", "wrong").catch(() => undefined);
+    await login("amira", "wrong").catch(() => undefined);
 
     expect(authorizationOf(0)).toBeNull();
     expect(listener).not.toHaveBeenCalled();

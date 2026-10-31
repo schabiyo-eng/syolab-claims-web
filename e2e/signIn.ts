@@ -8,23 +8,23 @@ export interface DemoAccount {
 }
 
 export const CLAIMANT = {
-  username: "amira.shah",
-  password: "claimant-demo",
+  username: "amira",
+  password: "amira-demo",
   displayName: "Amira Shah",
   roleLabel: "Claimant",
 } as const satisfies DemoAccount;
 
 export const CLAIMANT_LUIS = {
-  username: "luis.ortega",
-  password: "claimant-demo",
+  username: "luis",
+  password: "luis-demo",
   displayName: "Luis Ortega",
   roleLabel: "Claimant",
 } as const satisfies DemoAccount;
 
 export const ADJUSTER = {
-  username: "dana.wells",
-  password: "adjuster-demo",
-  displayName: "Dana Wells",
+  username: "dana",
+  password: "dana-demo",
+  displayName: "Dana Whitfield",
   roleLabel: "Adjuster",
 } as const satisfies DemoAccount;
 

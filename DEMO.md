@@ -45,12 +45,15 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. The dev server proxies `/api` to `http://localhost:8080`. Sign in as `amira.shah` with password `claimant-demo`. To show the claims queue for every policy, sign in as the adjuster `dana.wells` with password `adjuster-demo`.
+Open `http://localhost:5173`. The dev server proxies `/api` to `http://localhost:8080`. Sign in as the claimant `amira` (Amira Shah). To show the claims queue for every policy, sign in as the adjuster `dana` (Dana Whitfield). The other claimant is `luis` (Luis Ortega). The passwords are in the API repository's `auth/DemoUsers.java`; the web stub's `server/auth.ts` mirrors them.
+
+Every seeded claim starts Pending with an empty timeline and no comments. The API seeds no decisions, so make them live.
 
 Before the exercise, show behavior the suite already locks in:
 
-- Chris Dalton on `POL-1004` has a claim for `10000.00`, the same as the policy limit, and the status is Accepted. Sign in as `dana.wells` to see it in the claims queue.
+- Chris Dalton on `POL-1004` has a claim for `10000.00`, the same as the policy limit, and the status is Accepted. Sign in as `dana` to see it in the claims queue.
 - Amira Shah on `POL-1001` already has `6000.00` and `4000.00` accepted. Submit `1.00` with both required documents. The new claim is Rejected because the open claims together pass the limit.
+- Request info live. As `dana`, open Luis Ortega's Clinic visit claim on `POL-1002` (Flagged, because the medical bill is missing), enter the note "Please upload the medical bill for the clinic visit.", and click Request info. The timeline shows the change with Dana's username. Sign in as `luis`: the row shows Info requested, and the claim page shows the notice and the note. Reply in the comments.
 
 ## How the pieces fit
 

@@ -65,7 +65,7 @@ describe("historyActionText", () => {
 });
 
 describe("latestDecisionNote", () => {
-  const base = { at: "2026-01-01T00:00:00Z", actor: "dana.wells" } as const;
+  const base = { at: "2026-01-01T00:00:00Z", actor: "dana" } as const;
 
   it("returns the note of the newest decision", () => {
     expect(

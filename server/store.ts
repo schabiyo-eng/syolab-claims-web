@@ -48,19 +48,12 @@ export function createStore(options: StoreOptions = {}): ClaimStore {
   }
 
   for (const seed of options.seeds ?? seedClaims()) {
-    let claim = adjudicate(seed, policies, claims, clock, {
+    const claim = adjudicate(seed, policies, claims, clock, {
       id: seed.id,
       createdAt: seed.createdAt,
     });
-    for (const { actor, at, ...request } of seed.decisions ?? []) {
-      const result = decide(claim, request, actor, at);
-      if (!result.ok) {
-        throw new Error(`Seed claim ${seed.id} has a decision after a final one.`);
-      }
-      claim = result.claim;
-    }
     claims.push(claim);
-    comments.set(claim.id, [...(seed.comments ?? [])]);
+    comments.set(claim.id, []);
   }
 
   return {

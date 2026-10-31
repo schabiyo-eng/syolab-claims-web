@@ -9,6 +9,12 @@ test("loads the desk and accepts a small POL-1002 claim", async ({ page }) => {
     page.getByRole("heading", { name: "Luis Ortega" }).first(),
   ).toBeVisible();
 
+  const followUps = page.getByRole("listitem").filter({ hasText: "Follow up visit" });
+  await expect(
+    page.getByRole("listitem").filter({ hasText: "Clinic visit" }),
+  ).toBeVisible();
+  const earlierFollowUps = await followUps.count();
+
   await page.getByLabel("Policy").selectOption("POL-1002");
   await expect(page.getByRole("checkbox", { name: "medical-bill" })).toBeVisible();
   await page.getByLabel("Claimant").fill("Luis Ortega");
@@ -18,7 +24,8 @@ test("loads the desk and accepts a small POL-1002 claim", async ({ page }) => {
   await page.getByRole("checkbox", { name: "medical-bill" }).check();
   await page.getByRole("button", { name: "Submit claim" }).click();
 
-  const row = page.getByRole("listitem").filter({ hasText: "Follow up visit" });
+  await expect(followUps).toHaveCount(earlierFollowUps + 1);
+  const row = followUps.first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("Accepted");
   await expect(row).toContainText("POL-1002");
