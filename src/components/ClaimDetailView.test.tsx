@@ -48,7 +48,7 @@ function claim(decision: Decision): Claim {
         ? [
             {
               at: "2026-04-04T09:30:00Z",
-              actor: "dana.wells",
+              actor: "dana",
               action: "DECIDED" as const,
               fromDecision: "PENDING" as const,
               toDecision: decision,
@@ -64,7 +64,7 @@ const COMMENTS: Comment[] = [
   {
     id: "d3333333-3333-4333-8333-333333333333",
     at: "2026-04-04T09:31:00Z",
-    author: "dana.wells",
+    author: "dana",
     role: "ADJUSTER",
     body: REQUEST,
   },
@@ -123,12 +123,12 @@ describe("ClaimDetailView", () => {
     expect(rows).toHaveLength(2);
     expect(rows?.[0]).toContain('<time dateTime="2026-04-02T15:00:00Z"');
     expect(rows?.[0]).toContain("<strong>Submitted</strong>");
-    expect(rows?.[0]).not.toContain("dana.wells");
+    expect(rows?.[0]).not.toContain("dana");
     expect(rows?.[1]).toContain('<time dateTime="2026-04-04T09:30:00Z"');
-    expect(rows?.[1]).toContain("dana.wells");
+    expect(rows?.[1]).toContain("dana");
     expect(rows?.[1]).toContain("<strong>Pending → Info requested</strong>");
     expect(html).toMatch(
-      /<strong>dana\.wells<\/strong> <span class="comment-role">Adjuster<\/span>/,
+      /<strong>dana<\/strong> <span class="comment-role">Adjuster<\/span>/,
     );
   });
 
