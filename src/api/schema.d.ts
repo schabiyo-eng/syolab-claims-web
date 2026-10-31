@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in and receive a bearer token */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the signed-in user */
+        get: operations["currentUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/policies": {
         parameters: {
             query?: never;
@@ -77,6 +111,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {string} */
+        Role: "CLAIMANT" | "ADJUSTER";
+        LoginRequest: {
+            /** @example amira.shah */
+            username: string;
+            /** Format: password */
+            password: string;
+        };
+        LoginResponse: {
+            /** @description Bearer token for the Authorization header */
+            token: string;
+            username: string;
+            role: components["schemas"]["Role"];
+            displayName: string;
+        };
+        CurrentUser: {
+            username: string;
+            role: components["schemas"]["Role"];
+            displayName: string;
+        };
         Policy: {
             /** @example POL-1001 */
             policyNumber: string;
@@ -144,8 +198,17 @@ export interface components {
                 "application/json": components["schemas"]["ErrorMessage"];
             };
         };
-        /** @description Malformed claim */
+        /** @description Malformed request */
         BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorMessage"];
+            };
+        };
+        /** @description Missing, unknown, or expired bearer token */
+        Unauthorized: {
             headers: {
                 [name: string]: unknown;
             };
@@ -164,6 +227,61 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description Username or password is incorrect */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorMessage"];
+                };
+            };
+        };
+    };
+    currentUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The user the bearer token belongs to */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listPolicies: {
         parameters: {
             query?: never;
@@ -182,6 +300,7 @@ export interface operations {
                     "application/json": components["schemas"]["Policy"][];
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     getPolicy: {
@@ -204,6 +323,7 @@ export interface operations {
                     "application/json": components["schemas"]["Policy"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -225,6 +345,7 @@ export interface operations {
                     "application/json": components["schemas"]["Claim"][];
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     createClaim: {
@@ -250,6 +371,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
         };
     };
     getClaim: {
@@ -272,6 +394,7 @@ export interface operations {
                     "application/json": components["schemas"]["Claim"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
         };
     };

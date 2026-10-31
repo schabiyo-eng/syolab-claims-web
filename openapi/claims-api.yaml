@@ -5,7 +5,48 @@ info:
   description: Claims intake API for the Syolab insurance demo. Money amounts are decimal strings.
 servers:
   - url: http://localhost:8080
+security:
+  - bearerAuth: []
 paths:
+  /api/auth/login:
+    post:
+      operationId: login
+      summary: Sign in and receive a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Username or password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /api/auth/me:
+    get:
+      operationId: currentUser
+      summary: Get the signed-in user
+      responses:
+        "200":
+          description: The user the bearer token belongs to
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/policies:
     get:
       operationId: listPolicies
@@ -19,6 +60,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Policy"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/policies/{policyNumber}:
     get:
       operationId: getPolicy
@@ -32,6 +75,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Policy"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
   /api/claims:
@@ -47,6 +92,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Claim"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     post:
       operationId: createClaim
       summary: Submit a claim and run validation
@@ -65,6 +112,8 @@ paths:
                 $ref: "#/components/schemas/Claim"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/claims/{id}:
     get:
       operationId: getClaim
@@ -78,9 +127,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Claim"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
   parameters:
     PolicyNumber:
       name: policyNumber
@@ -103,12 +158,57 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorMessage"
     BadRequest:
-      description: Malformed claim
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    Unauthorized:
+      description: Missing, unknown, or expired bearer token
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorMessage"
   schemas:
+    Role:
+      type: string
+      enum: [CLAIMANT, ADJUSTER]
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: amira.shah
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [token, username, role, displayName]
+      properties:
+        token:
+          type: string
+          description: Bearer token for the Authorization header
+        username:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        displayName:
+          type: string
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      required: [username, role, displayName]
+      properties:
+        username:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        displayName:
+          type: string
     Policy:
       type: object
       additionalProperties: false
