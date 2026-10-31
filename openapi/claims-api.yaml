@@ -133,7 +133,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ClaimDetail"
+                $ref: "#/components/schemas/Claim"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -143,10 +143,12 @@ paths:
       operationId: decideClaim
       summary: Record an adjuster decision on a claim
       description: >-
-        Adjusters only. A claimant gets 403 before the claim or body is checked.
+        Adjusters only. A claimant gets 403 before the body or claim is checked.
+        The body is checked next (400), then the claim (404), then the current decision (409).
         A note is required for DENIED and INFO_REQUESTED and optional for APPROVED.
-        APPROVED and DENIED are final, so a later decision returns 409.
-        INFO_REQUESTED is not final and can move to APPROVED, DENIED, or INFO_REQUESTED again.
+        APPROVED and DENIED are final, so any later decision returns 409.
+        INFO_REQUESTED is not final and can be sent again, or followed by APPROVED or DENIED.
+        A claim that validation REJECTED can still be decided.
       parameters:
         - $ref: "#/components/parameters/ClaimId"
       requestBody:
@@ -161,7 +163,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ClaimDetail"
+                $ref: "#/components/schemas/Claim"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -193,9 +195,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
     post:
-      operationId: addComment
+      operationId: createComment
       summary: Add a comment to a claim
-      description: Scoped to the caller. Claimants can comment only on claims on their own policies. Adjusters can comment on any claim. A claim outside the caller's scope returns 404, the same as a missing one. The author and role come from the bearer token.
+      description: Scoped to the caller. Claimants can comment only on claims on their own policies. Adjusters can comment on any claim. A blank body returns 400 before the claim is checked. A claim outside the caller's scope returns 404, the same as a missing one. The author and role come from the bearer token.
       parameters:
         - $ref: "#/components/parameters/ClaimId"
       requestBody:
@@ -371,7 +373,7 @@ components:
             type: string
     Claim:
       type: object
-      description: ClaimDetail extends this schema with history, so it allows extra properties.
+      additionalProperties: false
       required:
         - id
         - policyNumber
@@ -382,8 +384,9 @@ components:
         - documentNames
         - status
         - findings
-        - decision
         - createdAt
+        - decision
+        - history
       properties:
         id:
           type: string
@@ -410,29 +413,34 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ValidationFinding"
-        decision:
-          $ref: "#/components/schemas/Decision"
         createdAt:
           type: string
           format: date-time
+        decision:
+          $ref: "#/components/schemas/Decision"
+        history:
+          type: array
+          description: Decision entries only, oldest first. Submission adds no entry; createdAt dates it.
+          items:
+            $ref: "#/components/schemas/HistoryEntry"
     Decision:
       type: string
       description: The adjuster decision, separate from the validation status. APPROVED and DENIED are final.
       enum: [PENDING, APPROVED, DENIED, INFO_REQUESTED]
-    DecisionChoice:
+    ActivityAction:
       type: string
-      description: A decision an adjuster can record. PENDING is only the starting state.
-      enum: [APPROVED, DENIED, INFO_REQUESTED]
+      enum: [DECIDED, COMMENTED]
     DecisionRequest:
       type: object
       additionalProperties: false
       required: [decision]
       properties:
         decision:
-          $ref: "#/components/schemas/DecisionChoice"
+          type: string
+          enum: [APPROVED, DENIED, INFO_REQUESTED]
         note:
           type: string
-          description: Required and non-blank for DENIED and INFO_REQUESTED. Optional for APPROVED.
+          description: Required when decision is DENIED or INFO_REQUESTED.
     HistoryEntry:
       type: object
       additionalProperties: false
@@ -443,31 +451,18 @@ components:
           format: date-time
         actor:
           type: string
-          description: Display name of the user who acted
+          description: Username of the adjuster who decided
         action:
-          type: string
-          enum: [SUBMITTED, DECIDED]
-        fromDecision:
           allOf:
-            - $ref: "#/components/schemas/Decision"
-          nullable: true
-          description: Null for SUBMITTED
+            - $ref: "#/components/schemas/ActivityAction"
+          description: Always DECIDED in claim history
+        fromDecision:
+          $ref: "#/components/schemas/Decision"
         toDecision:
           $ref: "#/components/schemas/Decision"
         note:
           type: string
           nullable: true
-    ClaimDetail:
-      allOf:
-        - $ref: "#/components/schemas/Claim"
-        - type: object
-          required: [history]
-          properties:
-            history:
-              type: array
-              description: Ordered oldest first
-              items:
-                $ref: "#/components/schemas/HistoryEntry"
     Comment:
       type: object
       additionalProperties: false
@@ -481,7 +476,7 @@ components:
           format: date-time
         author:
           type: string
-          description: Display name of the user who wrote the comment
+          description: Username of the user who wrote the comment
         role:
           $ref: "#/components/schemas/Role"
         body:
@@ -493,9 +488,7 @@ components:
       properties:
         body:
           type: string
-          minLength: 1
-          maxLength: 2000
-          description: Non-blank after trimming, at most 2000 characters
+          description: A blank body returns 400. The stored body is trimmed.
     ValidationFinding:
       type: object
       additionalProperties: false

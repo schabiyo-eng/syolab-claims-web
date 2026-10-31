@@ -133,7 +133,7 @@ export interface paths {
         put?: never;
         /**
          * Record an adjuster decision on a claim
-         * @description Adjusters only. A claimant gets 403 before the claim or body is checked. A note is required for DENIED and INFO_REQUESTED and optional for APPROVED. APPROVED and DENIED are final, so a later decision returns 409. INFO_REQUESTED is not final and can move to APPROVED, DENIED, or INFO_REQUESTED again.
+         * @description Adjusters only. A claimant gets 403 before the body or claim is checked. The body is checked next (400), then the claim (404), then the current decision (409). A note is required for DENIED and INFO_REQUESTED and optional for APPROVED. APPROVED and DENIED are final, so any later decision returns 409. INFO_REQUESTED is not final and can be sent again, or followed by APPROVED or DENIED. A claim that validation REJECTED can still be decided.
          */
         post: operations["decideClaim"];
         delete?: never;
@@ -157,9 +157,9 @@ export interface paths {
         put?: never;
         /**
          * Add a comment to a claim
-         * @description Scoped to the caller. Claimants can comment only on claims on their own policies. Adjusters can comment on any claim. A claim outside the caller's scope returns 404, the same as a missing one. The author and role come from the bearer token.
+         * @description Scoped to the caller. Claimants can comment only on claims on their own policies. Adjusters can comment on any claim. A blank body returns 400 before the claim is checked. A claim outside the caller's scope returns 404, the same as a missing one. The author and role come from the bearer token.
          */
-        post: operations["addComment"];
+        post: operations["createComment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -220,7 +220,6 @@ export interface components {
             description: string;
             documentNames: string[];
         };
-        /** @description ClaimDetail extends this schema with history, so it allows extra properties. */
         Claim: {
             /** Format: uuid */
             id: string;
@@ -234,53 +233,48 @@ export interface components {
             /** @enum {string} */
             status: "ACCEPTED" | "FLAGGED" | "REJECTED";
             findings: components["schemas"]["ValidationFinding"][];
-            decision: components["schemas"]["Decision"];
             /** Format: date-time */
             createdAt: string;
+            decision: components["schemas"]["Decision"];
+            /** @description Decision entries only, oldest first. Submission adds no entry; createdAt dates it. */
+            history: components["schemas"]["HistoryEntry"][];
         };
         /**
          * @description The adjuster decision, separate from the validation status. APPROVED and DENIED are final.
          * @enum {string}
          */
         Decision: "PENDING" | "APPROVED" | "DENIED" | "INFO_REQUESTED";
-        /**
-         * @description A decision an adjuster can record. PENDING is only the starting state.
-         * @enum {string}
-         */
-        DecisionChoice: "APPROVED" | "DENIED" | "INFO_REQUESTED";
+        /** @enum {string} */
+        ActivityAction: "DECIDED" | "COMMENTED";
         DecisionRequest: {
-            decision: components["schemas"]["DecisionChoice"];
-            /** @description Required and non-blank for DENIED and INFO_REQUESTED. Optional for APPROVED. */
+            /** @enum {string} */
+            decision: "APPROVED" | "DENIED" | "INFO_REQUESTED";
+            /** @description Required when decision is DENIED or INFO_REQUESTED. */
             note?: string;
         };
         HistoryEntry: {
             /** Format: date-time */
             at: string;
-            /** @description Display name of the user who acted */
+            /** @description Username of the adjuster who decided */
             actor: string;
-            /** @enum {string} */
-            action: "SUBMITTED" | "DECIDED";
-            /** @description Null for SUBMITTED */
-            fromDecision: components["schemas"]["Decision"] | null;
+            /** @description Always DECIDED in claim history */
+            action: components["schemas"]["ActivityAction"];
+            fromDecision: components["schemas"]["Decision"];
             toDecision: components["schemas"]["Decision"];
             note: string | null;
-        };
-        ClaimDetail: components["schemas"]["Claim"] & {
-            /** @description Ordered oldest first */
-            history: components["schemas"]["HistoryEntry"][];
         };
         Comment: {
             /** Format: uuid */
             id: string;
             /** Format: date-time */
             at: string;
-            /** @description Display name of the user who wrote the comment */
+            /** @description Username of the user who wrote the comment */
             author: string;
             role: components["schemas"]["Role"];
             body: string;
         };
         CommentRequest: {
-            /** @description Non-blank after trimming, at most 2000 characters */
+            /** @description A blank body returns 400. The stored body is trimmed. */
             body: string;
         };
         ValidationFinding: {
@@ -516,7 +510,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClaimDetail"];
+                    "application/json": components["schemas"]["Claim"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -544,7 +538,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClaimDetail"];
+                    "application/json": components["schemas"]["Claim"];
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -578,7 +572,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    addComment: {
+    createComment: {
         parameters: {
             query?: never;
             header?: never;

@@ -1,6 +1,5 @@
 import type {
   Claim,
-  ClaimDetail,
   Comment,
   CommentRequest,
   CreateClaimRequest,
@@ -154,12 +153,12 @@ function claimPath(id: string): string {
   return `/api/claims/${encodeURIComponent(id)}`;
 }
 
-export function getClaim(id: string): Promise<ClaimDetail> {
-  return request<ClaimDetail>(claimPath(id));
+export function getClaim(id: string): Promise<Claim> {
+  return request<Claim>(claimPath(id));
 }
 
-export function decideClaim(id: string, body: DecisionRequest): Promise<ClaimDetail> {
-  return request<ClaimDetail>(`${claimPath(id)}/decision`, {
+export function decideClaim(id: string, body: DecisionRequest): Promise<Claim> {
+  return request<Claim>(`${claimPath(id)}/decision`, {
     method: "POST",
     body: JSON.stringify(body),
   });

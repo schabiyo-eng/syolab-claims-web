@@ -6,12 +6,7 @@ import {
   listComments,
   postComment,
 } from "../api/client";
-import type {
-  ClaimDetail as ClaimDetailData,
-  Comment,
-  DecisionChoice,
-  Role,
-} from "../api/types";
+import type { Claim, Comment, DecisionChoice, Role } from "../api/types";
 import { commentError } from "../domain/comments";
 import { noteError } from "../domain/decision";
 import {
@@ -29,7 +24,7 @@ interface ClaimDetailProps {
 }
 
 interface Loaded {
-  claim: ClaimDetailData;
+  claim: Claim;
   comments: Comment[];
 }
 
@@ -88,7 +83,7 @@ export function ClaimDetail({ id, role }: ClaimDetailProps) {
     };
   }, [id, reloadToken]);
 
-  function replaceClaim(claim: ClaimDetailData) {
+  function replaceClaim(claim: Claim) {
     setState((current) =>
       current.kind === "ready"
         ? { kind: "ready", data: { ...current.data, claim } }

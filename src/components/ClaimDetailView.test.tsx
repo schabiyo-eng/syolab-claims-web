@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ClaimDetail, Comment, Decision, Role } from "../api/types";
+import type { Claim, Comment, Decision, Role } from "../api/types";
 import {
   ClaimDetailView,
   type CommentFormState,
@@ -23,7 +23,7 @@ const IDLE_COMMENT: CommentFormState = {
 
 const REQUEST = "Please upload the medical bill for the clinic visit.";
 
-function claim(decision: Decision): ClaimDetail {
+function claim(decision: Decision): Claim {
   const decided = decision !== "PENDING";
   return {
     id: "c3333333-3333-4333-8333-333333333333",
@@ -44,19 +44,11 @@ function claim(decision: Decision): ClaimDetail {
     decision,
     createdAt: "2026-04-02T15:00:00Z",
     history: [
-      {
-        at: "2026-04-02T15:00:00Z",
-        actor: "Luis Ortega",
-        action: "SUBMITTED",
-        fromDecision: null,
-        toDecision: "PENDING",
-        note: null,
-      },
       ...(decided
         ? [
             {
               at: "2026-04-04T09:30:00Z",
-              actor: "Dana Wells",
+              actor: "dana.wells",
               action: "DECIDED" as const,
               fromDecision: "PENDING" as const,
               toDecision: decision,
@@ -72,7 +64,7 @@ const COMMENTS: Comment[] = [
   {
     id: "d3333333-3333-4333-8333-333333333333",
     at: "2026-04-04T09:31:00Z",
-    author: "Dana Wells",
+    author: "dana.wells",
     role: "ADJUSTER",
     body: REQUEST,
   },
@@ -118,10 +110,36 @@ describe("ClaimDetailView", () => {
     expect(html).toContain("POL-1002");
     expect(html).toContain("MISSING_DOCUMENTS");
     expect(html).toContain("A required document is missing.");
-    expect(html).toContain("Submitted");
     expect(html).toContain("Pending → Info requested");
     expect(html).toContain(REQUEST);
     expect(html).toContain('<time dateTime="2026-04-04T09:31:00Z"');
+  });
+
+  it("starts the timeline with a submission row from createdAt, then each decision by username", () => {
+    const html = render("ADJUSTER", "INFO_REQUESTED");
+    const rows = [...html.matchAll(/<ol class="timeline">(.*?)<\/ol>/g)][0]?.[1]?.match(
+      /<li.*?<\/li>/g,
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows?.[0]).toContain('<time dateTime="2026-04-02T15:00:00Z"');
+    expect(rows?.[0]).toContain("<strong>Submitted</strong>");
+    expect(rows?.[0]).not.toContain("dana.wells");
+    expect(rows?.[1]).toContain('<time dateTime="2026-04-04T09:30:00Z"');
+    expect(rows?.[1]).toContain("dana.wells");
+    expect(rows?.[1]).toContain("<strong>Pending → Info requested</strong>");
+    expect(html).toMatch(
+      /<strong>dana\.wells<\/strong> <span class="comment-role">Adjuster<\/span>/,
+    );
+  });
+
+  it("keeps every decision button enabled for an adjuster while info is requested", () => {
+    const html = render("ADJUSTER", "INFO_REQUESTED");
+    expect(decisionButtons(html)).toEqual([
+      { label: "Approve", disabled: false },
+      { label: "Deny", disabled: false },
+      { label: "Request info", disabled: false },
+    ]);
+    expect(html).not.toContain("This decision is final.");
   });
 
   it("gives an adjuster three enabled decision buttons and a note field on a pending claim", () => {

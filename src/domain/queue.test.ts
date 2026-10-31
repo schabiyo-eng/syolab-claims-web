@@ -20,6 +20,7 @@ function claim(
     findings: [],
     decision: "PENDING",
     createdAt: "2026-01-01T00:00:00Z",
+    history: [],
   };
 }
 

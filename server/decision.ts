@@ -1,4 +1,4 @@
-import type { ClaimDetail, DecisionChoice } from "../src/api/types";
+import type { Claim, DecisionChoice } from "../src/api/types";
 import { isFinal } from "../src/domain/decision";
 
 export interface DecisionInput {
@@ -6,11 +6,10 @@ export interface DecisionInput {
   note: string | null;
 }
 
-export type DecideResult =
-  { ok: true; claim: ClaimDetail } | { ok: false; reason: "final" };
+export type DecideResult = { ok: true; claim: Claim } | { ok: false; reason: "final" };
 
 export function decide(
-  claim: ClaimDetail,
+  claim: Claim,
   request: DecisionInput,
   actor: string,
   at: string,

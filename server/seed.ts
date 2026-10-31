@@ -19,7 +19,7 @@ export interface SeedClaim {
   comments?: readonly Comment[];
 }
 
-const ADJUSTER_NAME = "Dana Wells";
+const ADJUSTER_USERNAME = "dana.wells";
 const MEDICAL_BILL_REQUEST = "Please upload the medical bill for the clinic visit.";
 
 export function seedPolicies(): Policy[] {
@@ -78,7 +78,7 @@ export function seedClaims(): SeedClaim[] {
         {
           decision: "APPROVED",
           note: null,
-          actor: ADJUSTER_NAME,
+          actor: ADJUSTER_USERNAME,
           at: "2026-01-22T11:00:00Z",
         },
       ],
@@ -116,7 +116,7 @@ export function seedClaims(): SeedClaim[] {
         {
           decision: "INFO_REQUESTED",
           note: MEDICAL_BILL_REQUEST,
-          actor: ADJUSTER_NAME,
+          actor: ADJUSTER_USERNAME,
           at: "2026-04-04T09:30:00Z",
         },
       ],
@@ -124,7 +124,7 @@ export function seedClaims(): SeedClaim[] {
         {
           id: "d3333333-3333-4333-8333-333333333333",
           at: "2026-04-04T09:31:00Z",
-          author: ADJUSTER_NAME,
+          author: ADJUSTER_USERNAME,
           role: "ADJUSTER",
           body: MEDICAL_BILL_REQUEST,
         },
@@ -143,7 +143,7 @@ export function seedClaims(): SeedClaim[] {
         {
           decision: "DENIED",
           note: "The policy expired before the incident date.",
-          actor: ADJUSTER_NAME,
+          actor: ADJUSTER_USERNAME,
           at: "2026-05-03T10:00:00Z",
         },
       ],

@@ -51,37 +51,25 @@ describe("noteError", () => {
 });
 
 describe("historyActionText", () => {
-  it("describes a submission and a decision change", () => {
+  it("describes each decision change as from → to", () => {
+    expect(
+      historyActionText({ fromDecision: "PENDING", toDecision: "INFO_REQUESTED" }),
+    ).toBe("Pending → Info requested");
     expect(
       historyActionText({
-        action: "SUBMITTED",
-        fromDecision: null,
-        toDecision: "PENDING",
-      }),
-    ).toBe("Submitted");
-    expect(
-      historyActionText({
-        action: "DECIDED",
-        fromDecision: "PENDING",
+        fromDecision: "INFO_REQUESTED",
         toDecision: "INFO_REQUESTED",
       }),
-    ).toBe("Pending → Info requested");
+    ).toBe("Info requested → Info requested");
   });
 });
 
 describe("latestDecisionNote", () => {
-  const base = { at: "2026-01-01T00:00:00Z", actor: "Dana Wells" } as const;
+  const base = { at: "2026-01-01T00:00:00Z", actor: "dana.wells" } as const;
 
   it("returns the note of the newest decision", () => {
     expect(
       latestDecisionNote([
-        {
-          ...base,
-          action: "SUBMITTED",
-          fromDecision: null,
-          toDecision: "PENDING",
-          note: null,
-        },
         {
           ...base,
           action: "DECIDED",
@@ -101,16 +89,6 @@ describe("latestDecisionNote", () => {
   });
 
   it("returns null without a decision", () => {
-    expect(
-      latestDecisionNote([
-        {
-          ...base,
-          action: "SUBMITTED",
-          fromDecision: null,
-          toDecision: "PENDING",
-          note: null,
-        },
-      ]),
-    ).toBeNull();
+    expect(latestDecisionNote([])).toBeNull();
   });
 });
