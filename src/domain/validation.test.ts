@@ -56,4 +56,15 @@ describe("validateClaimForm", () => {
       validateClaimForm(values({ incidentDate: "06/01/2026" })).incidentDate,
     ).toBeTruthy();
   });
+
+  it.each(["1,250.00", "$1,250.00"])("accepts formatted amount %s", (amount) => {
+    expect(validateClaimForm(values({ amount })).amount).toBeUndefined();
+  });
+
+  it.each(["$0.00", "-1,250.00", "1,250.000"])(
+    "rejects formatted amount %s",
+    (amount) => {
+      expect(validateClaimForm(values({ amount })).amount).toBeTruthy();
+    },
+  );
 });
