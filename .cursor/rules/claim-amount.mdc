@@ -1,0 +1,10 @@
+---
+description: Claim amount parsing stays canonical decimal text
+alwaysApply: true
+---
+
+Any change to claim amount parsing must keep a test that `parseAmount` accepts `1,250.00` and `$1,250.00` as text `1250.00`.
+
+That test must still reject zero, negatives, and more than two decimal places. Do not weaken those tests.
+
+Claim creation stores the canonical decimal text from the parser.
