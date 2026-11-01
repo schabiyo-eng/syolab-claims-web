@@ -18,6 +18,16 @@ describe("parseCreateClaim", () => {
     }
   });
 
+  it("canonicalizes comma- and dollar-formatted amounts", () => {
+    for (const amount of ["1,250.00", "$1,250.00", "  $1,250.00  "]) {
+      const parsed = parseCreateClaim({ ...valid, amount });
+      expect(parsed.ok).toBe(true);
+      if (parsed.ok) {
+        expect(parsed.claim.amount).toBe("1250.00");
+      }
+    }
+  });
+
   it("rejects a missing field, a blank name, a bad amount, and a bad date", () => {
     const withoutName: Record<string, unknown> = { ...valid };
     delete withoutName.claimantName;

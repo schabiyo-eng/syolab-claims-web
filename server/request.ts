@@ -39,7 +39,8 @@ export function parseCreateClaim(body: unknown): ParseResult {
   if (typeof record.amount !== "string") {
     return { ok: false, message: "Amount must be a decimal string." };
   }
-  if (!parseAmount(record.amount).ok) {
+  const parsedAmount = parseAmount(record.amount);
+  if (!parsedAmount.ok) {
     return {
       ok: false,
       message: "Amount must be greater than zero with at most two decimal places.",
@@ -56,7 +57,7 @@ export function parseCreateClaim(body: unknown): ParseResult {
     claim: {
       policyNumber: record.policyNumber.trim(),
       claimantName: record.claimantName.trim(),
-      amount: record.amount.trim(),
+      amount: parsedAmount.text,
       incidentDate: record.incidentDate,
       description: record.description.trim(),
       documentNames: record.documentNames,
